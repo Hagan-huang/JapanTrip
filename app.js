@@ -352,16 +352,18 @@ function selectDay(i, anim) {
 }
 function renderDay(d, delay = 0) {
   const c = HUE[d.hue] || "var(--cyan)";
-  const items = d.items.map((it, k) => {
+  const rank = t => /^\d/.test(t) ? +t.replace(":", "") : ({ "上午": 900, "下午": 1400, "晚上": 2000 }[t] ?? -1);
+  const sorted = d.items.map((it, k) => [it, k]).sort((x, y) => (rank(x[0].t) - rank(y[0].t)) || (x[1] - y[1])).map(x => x[0]);
+  const items = sorted.map((it, k) => {
     const tbd = it.tbd ? '<span class="tbdl">待定</span>' : "";
     const pp = it.people ? `<span class="pp">${esc(it.people)}</span>` : "";
     const close = it.close ? `<div class="close">${esc(it.close)}</div>` : "";
     const note = it.note ? `<div class="sub">${esc(it.note)}</div>` : "";
     let body;
     if (it.type === "move") {
-      body = `<div class="mv">${it.mode ? `<span class="tag" style="--tc:${MODE_C[it.mode] || "var(--cyan)"}">${esc(it.mode)}</span>` : ""}${tbd}${esc(it.text)}</div>${note}${close}`;
+      body = `<div class="mv">${it.mode ? `<span class="tag" style="--tc:${MODE_C[it.mode] || "var(--cyan)"}">${esc(it.mode)}</span>` : ""}${tbd}${esc(it.text)}${pp}</div>${note}${close}`;
     } else if (it.type === "note") {
-      body = `<div class="mv notep">${tbd}${esc(it.text)}</div>${note}${close}`;
+      body = `<div class="mv notep">${tbd}${esc(it.text)}${pp}</div>${note}${close}`;
     } else {
       const inner = `${it.map ? '<span class="m">MAP ↗</span>' : ""}<div class="n">${tbd}${esc(it.text)}${pp}</div>${note}${close}`;
       body = it.map ? `<a class="spot" href="${mapUrl(it.map)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="spot">${inner}</div>`;

@@ -74,7 +74,7 @@ window.TRIP = {
     },
     {
       date: "1/15", dow: "五", icon: "torii2", hue: "purple",
-      title: "白鬚神社＋比叡山", stay: "EN HOTEL Kyoto", people: "4 人",
+      title: "白鬚神社＋比叡山", stay: "EN HOTEL Kyoto（大阪 2 人另住）", people: "京都 4 人＋大阪 2 人",
       items: [
         { t: "08:00", type: "move", mode: "JR", text: "湖西線 京都 → 近江高島", note: "約 1 小時" },
         { t: "09:10", type: "move", mode: "計程車", text: "近江高島站 → 白鬚神社", note: "約 5 分，4 人剛好一台" },
@@ -83,7 +83,11 @@ window.TRIP = {
         { t: "12:00", type: "move", mode: "纜車", text: "坂本纜車上山", note: "單程 ¥960；12–2 月首末班停駛" },
         { t: "12:30", type: "spot", text: "延曆寺東塔（根本中堂）＋午餐", close: "東塔 16:00 關", note: "常有積雪，穿防滑的鞋", map: "延暦寺 根本中堂" },
         { t: "15:30", type: "move", mode: "纜車", text: "纜車下山 → JR 回京都", note: "約 17:00 到" },
-        { t: "晚上", type: "note", text: "打包，準備明天搬去大阪" }
+        { t: "晚上", type: "note", text: "打包，準備明天搬去大阪" },
+        { t: "17:55", type: "move", mode: "飛機", text: "IT212 降落關西機場 T1", people: "大阪 2 人" },
+        { t: "18:45", type: "move", mode: "南海", text: "關西機場 → 難波", note: "空港急行約 45 分 ¥970；特急 Rapi:t 約 38 分 ¥1,490", people: "大阪 2 人" },
+        { t: "19:45", type: "note", text: "入住今晚的住處（自己訂，難波一帶）", tbd: true, people: "大阪 2 人" },
+        { t: "晚上", type: "food", text: "道頓堀晚餐、逛街", people: "大阪 2 人", map: "道頓堀" }
       ]
     },
     {
@@ -91,6 +95,8 @@ window.TRIP = {
       title: "保津川遊船 → 搬去大阪", stay: "大阪 九条南", people: "4 人 → 全員",
       items: [
         { t: "08:15", type: "move", mode: "JR", text: "退房 → 京都站轉嵯峨野線到龜岡", note: "龜岡站走 8 分到乘船處" },
+        { t: "上午", type: "spot", text: "大阪市區自由行動（黑門市場、心齋橋）", note: "行李先寄放住處或難波站置物櫃", people: "1/15 到的 2 人" },
+        { t: "10:25", type: "move", mode: "飛機", text: "IT210 降落關西 T1 → 南海到難波", note: "可以先跟 1/15 到的 2 人會合", people: "1/16 到的 2 人" },
         { t: "—", type: "note", text: "行李怎麼處理？宅急便寄大阪，或寄放京都站置物櫃", tbd: true },
         { t: "10:00", type: "spot", text: "保津川遊船（約 2 小時，到嵐山）", note: "冬季暖桌船，¥6,000，要預約", close: "冬季 10:00–14:30 開船", map: "保津川下り 乗船場" },
         { t: "12:00", type: "food", text: "嵐山午餐 → 竹林小徑、渡月橋", map: "嵐山 竹林の小径" },
