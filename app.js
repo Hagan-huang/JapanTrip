@@ -129,18 +129,169 @@ function initHero() {
 /* =========================================================
    Flights
    ========================================================= */
+const CMAP = { cyan: "var(--cyan)", pink: "var(--pink)", purple: "var(--purple)", yellow: "var(--yellow)" };
+const AP = T.airports;
+const hm = d => d.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false });
+// 用機場當地時間顯示
+const localT = (iso, code) => { const d = new Date(iso); const u = new Date(d.getTime() + AP[code].tz * 36e5); return String(u.getUTCHours()).padStart(2, "0") + ":" + String(u.getUTCMinutes()).padStart(2, "0"); };
+const durTxt = ms => { const m = Math.round(ms / 6e4); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`; };
+const apName = (c, t) => AP[c].name + (t ? " " + t : "");
+
+function flightCard(f, i) {
+  const L = f.legs, a = L[0], z = L[L.length - 1];
+  const total = new Date(z.arr) - new Date(a.dep);
+  return `<div class="card glow fl" style="--c:${CMAP[f.color] || "var(--cyan)"}" data-f="${i}">
+    <div class="top"><span>${f.ret ? "1/21（四）" : esc(f.date)}　${esc(f.who)}</span><span>${L.map(l => esc(l.no || l.airline)).join(" → ")}</span></div>
+    <div class="row">
+      <div><div class="t">${localT(a.dep, a.from)}</div><div class="p">${esc(apName(a.from, a.fromT))}</div></div>
+      <div class="mid"><span>${L.length > 1 ? "轉機・" : ""}${durTxt(total)}</span></div>
+      <div class="end"><div class="t">${localT(z.arr, z.to)}</div><div class="p">${esc(apName(z.to, z.toT))}</div></div>
+    </div>
+    ${L.length > 1 ? `<div class="legs">經 ${L.slice(0, -1).map(l => AP[l.to].name).join("、")}</div>` : ""}
+    ${f.note ? `<div class="nt">▸ ${esc(f.note)}</div>` : ""}
+    <div class="go">飛行過程 ▸</div>
+  </div>`;
+}
+let fTab = 0;
 function initFlights() {
-  const cmap = { cyan: "var(--cyan)", pink: "var(--pink)", purple: "var(--purple)", yellow: "var(--yellow)" };
-  $("#flightList").innerHTML = T.flights.map(f => `
-    <div class="card glow fl" style="--c:${cmap[f.color] || "var(--cyan)"}">
-      <div class="top"><span>${esc(f.date)}　${esc(f.tag)}</span><span>${esc(f.no)}</span></div>
-      <div class="row">
-        <div><div class="t">${esc(f.fromT)}</div><div class="p">${esc(f.from)}</div></div>
-        <div class="mid"><span>${esc(f.dur)}</span></div>
-        <div class="end"><div class="t">${esc(f.toT)}</div><div class="p">${esc(f.to)}</div></div>
-      </div>
-      ${f.note ? `<div class="nt">▸ ${esc(f.note)}</div>` : ""}
-    </div>`).join("");
+  const out = T.flights.map((f, i) => [f, i]).filter(([f]) => !f.ret);
+  const render = () => {
+    $("#ftabs").innerHTML = T.flightDates.map((d, k) => { const n = out.filter(([f]) => f.date === d).length; return `<button class="${k === fTab ? "on" : ""}" data-t="${k}">${d}<small>${n ? n + " 班" : "—"}</small></button>`; }).join("");
+    const list = out.filter(([f]) => f.date === T.flightDates[fTab]);
+    $("#flightList").innerHTML = list.length ? list.map(([f, i]) => flightCard(f, i)).join("") : `<div class="card"><div class="empty">這天目前沒有人搭機</div></div>`;
+  };
+  // 預設選第一個有航班的日期
+  fTab = Math.max(0, T.flightDates.findIndex(d => out.some(([f]) => f.date === d)));
+  render();
+  $("#retList").innerHTML = T.flights.map((f, i) => f.ret ? flightCard(f, i) : "").join("");
+  $("#ftabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { fTab = +b.dataset.t; render(); } });
+  $("#flights").addEventListener("click", e => { const c = e.target.closest(".fl"); if (c) openFlight(T.flights[+c.dataset.f]); });
+  $("#modal").addEventListener("click", e => { if (e.target.id === "modal" || e.target.closest(".xx")) closeFlight(); });
+}
+
+/* ---- 航線地圖 ---- */
+const MAPB = { lon0: 116, lon1: 138, lat0: 21, lat1: 39 }, MW = 440, MH = 360;
+const P = (lat, lon) => [((lon - MAPB.lon0) / (MAPB.lon1 - MAPB.lon0) * MW).toFixed(1), ((MAPB.lat1 - lat) / (MAPB.lat1 - MAPB.lat0) * MH).toFixed(1)];
+const poly = pts => pts.map(([la, lo]) => P(la, lo).join(",")).join(" ");
+const LAND = [
+  // 中國沿海
+  [[21, 116], [23, 116.5], [24.4, 118.1], [25.5, 119.5], [26.7, 119.8], [28, 121], [29.5, 121.9], [30.8, 121.9], [31.7, 121.2], [32.5, 120.8], [34.3, 119.5], [35.3, 119.4], [36, 120.3], [36.9, 122.4], [37.4, 122.6], [37.6, 121], [37.3, 119.5], [37.8, 118.9], [38.5, 117.6], [39, 117.5], [39, 116], [21, 116]],
+  // 台灣
+  [[25.3, 121.5], [25, 122], [24, 121.6], [23, 121.4], [22, 120.9], [21.9, 120.7], [22.6, 120.3], [23.5, 120.1], [24.5, 120.6], [25.1, 121]],
+  // 朝鮮半島
+  [[39, 124.6], [38.3, 124.8], [37.7, 126.1], [37, 126.6], [36.5, 126.3], [35.9, 126.6], [35, 126.3], [34.4, 126.5], [34.5, 127.4], [34.8, 128.4], [35.1, 129.1], [35.5, 129.4], [36.5, 129.4], [37.5, 129.1], [38.6, 128.3], [39, 127.9]],
+  // 九州
+  [[33.9, 130.9], [33.6, 130.3], [33.2, 129.6], [32.6, 129.8], [31.4, 130.2], [31, 130.7], [31.4, 131.4], [32.4, 131.7], [33.3, 131.7], [33.9, 131]],
+  // 四國
+  [[34.3, 133], [34.4, 134.6], [33.9, 134.7], [33.2, 134.2], [33, 133], [32.8, 132.6], [33.4, 132.4], [34, 132.7]],
+  // 本州
+  [[34, 131], [34.4, 131.4], [35.2, 132.6], [35.5, 133.3], [35.6, 134.5], [35.7, 135.3], [35.5, 135.9], [35.8, 136], [36.3, 136.3], [37, 136.8], [37.5, 137.3], [37.2, 138], [37.6, 138.6], [37.9, 139], [35, 139], [34.6, 138], [34.6, 137], [34.3, 136.8], [33.5, 136], [33.4, 135.7], [34.2, 135.1], [34.7, 135.2], [34.7, 134], [34.4, 133.3], [34.3, 132.3]]
+];
+function arcPath(a, b) {
+  const [x1, y1] = P(a.lat, a.lon).map(Number), [x2, y2] = P(b.lat, b.lon).map(Number);
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+  let nx = -dy / len, ny = dx / len; if (ny > 0) { nx = -nx; ny = -ny; }
+  const k = 0.18 * len, cx = mx + nx * k, cy = my + ny * k;
+  return `M${x1},${y1} Q${cx.toFixed(1)},${cy.toFixed(1)} ${x2},${y2}`;
+}
+let flightRAF = 0;
+function openFlight(f) {
+  const L = f.legs, codes = [...new Set(L.flatMap(l => [l.from, l.to]))];
+  let grid = "";
+  for (let lo = 118; lo <= 138; lo += 4) { const [x] = P(30, lo); grid += `<line x1="${x}" y1="0" x2="${x}" y2="${MH}"/>`; }
+  for (let la = 22; la <= 38; la += 4) { const [, y] = P(la, 120); grid += `<line x1="0" y1="${y}" x2="${MW}" y2="${y}"/>`; }
+  const svg = `<svg viewBox="0 0 ${MW} ${MH}" xmlns="http://www.w3.org/2000/svg">
+    <defs><filter id="mg" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <radialGradient id="rad" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#1a0f3a"/><stop offset="1" stop-color="#05040c"/></radialGradient></defs>
+    <rect width="${MW}" height="${MH}" fill="url(#rad)"/>
+    <g stroke="#2a2150" stroke-width=".6">${grid}</g>
+    <g fill="rgba(5,217,232,.07)" stroke="#05d9e8" stroke-width="1" stroke-linejoin="round" opacity=".75">${LAND.map(p => `<polygon points="${poly(p)}"/>`).join("")}</g>
+    <g fill="none" stroke="#ff2a6d" stroke-width="2" stroke-dasharray="5 5" filter="url(#mg)">${L.map((l, k) => `<path id="leg${k}" d="${arcPath(AP[l.from], AP[l.to])}"/>`).join("")}</g>
+    <path id="trail" fill="none" stroke="#f9f871" stroke-width="2.5" filter="url(#mg)"/>
+    ${codes.map(c => { const [x, y] = P(AP[c].lat, AP[c].lon); return `<g filter="url(#mg)"><circle cx="${x}" cy="${y}" r="5" fill="#07060f" stroke="#f9f871" stroke-width="2"/><text x="${x}" y="${+y + 18}" fill="#e9e6ff" font-size="12" font-weight="700" text-anchor="middle" font-family="Noto Sans TC,sans-serif">${AP[c].name}</text><text x="${x}" y="${+y - 10}" fill="#f9f871" font-size="9" text-anchor="middle" font-family="JetBrains Mono,monospace">${c}</text></g>`; }).join("")}
+    <g id="plane" filter="url(#mg)"><path d="M10 0 L-6 -7 L-3 0 L-6 7 Z" fill="#fff" stroke="#05d9e8" stroke-width="1.2"/></g>
+  </svg>`;
+  const first = L[0], last = L[L.length - 1];
+  let legsHtml = "";
+  L.forEach((l, k) => {
+    legsHtml += `<div class="leg">
+      <div class="pt"><b>${localT(l.dep, l.from)}</b><span>${esc(apName(l.from, l.fromT))} 起飛</span></div>
+      <div class="air">✈ ${esc(l.airline)} ${esc(l.no)}・飛行 ${durTxt(new Date(l.arr) - new Date(l.dep))}
+        ${l.no ? `・<a href="https://www.flightradar24.com/data/flights/${l.no.toLowerCase()}" target="_blank" rel="noopener">即時追蹤 ↗</a>` : ""}</div>
+      <div class="pt"><b>${localT(l.arr, l.to)}</b><span>${esc(apName(l.to, l.toT))} 降落</span></div></div>`;
+    if (k < L.length - 1) legsHtml += `<div class="lay">⏳ 在${AP[l.to].name}轉機 ${durTxt(new Date(L[k + 1].dep) - new Date(l.arr))}${f.note ? "・" + esc(f.note.replace(/^.*?：/, "").replace(/（.*?）/g, "")) : ""}</div>`;
+  });
+  const tzs = [...new Set(codes.map(c => AP[c].tz))];
+  $("#sheet").innerHTML = `
+    <div class="hd"><div><h3>${esc(f.who)}</h3><p>${f.ret ? "1/21（四）" : esc(f.date)}・${L.map(l => esc(l.no || l.airline)).join(" → ")}</p></div><button class="xx" aria-label="關閉">✕</button></div>
+    <div class="map">${svg}</div>
+    <div class="fst" id="fst"></div><div class="fbar"><i id="fbar"></i></div>
+    ${legsHtml}
+    ${f.note && L.length === 1 ? `<div class="hint">▸ ${esc(f.note)}</div>` : ""}
+    ${tzs.length > 1 ? `<div class="tzn">時間都是當地時間：台灣 UTC+8，韓國、日本 UTC+9（比台灣快 1 小時）</div>` : ""}`;
+  $("#modal").classList.add("open");
+  document.body.style.overflow = "hidden";
+  animateFlight(f);
+}
+function closeFlight() {
+  $("#modal").classList.remove("open"); document.body.style.overflow = ""; cancelAnimationFrame(flightRAF); clearTimeout(flightRAF);
+}
+function animateFlight(f) {
+  const L = f.legs, paths = L.map((_, k) => $("#leg" + k)), lens = paths.map(p => p.getTotalLength());
+  const plane = $("#plane"), trail = $("#trail"), st = $("#fst"), bar = $("#fbar");
+  const t0 = +new Date(L[0].dep), t1 = +new Date(L[L.length - 1].arr);
+  // 依時間算出飛機在哪一段、飛了多少
+  const where = now => {
+    for (let k = 0; k < L.length; k++) {
+      const d = +new Date(L[k].dep), a = +new Date(L[k].arr);
+      if (now < d) return { k, p: 0, ground: true };
+      if (now <= a) return { k, p: (now - d) / (a - d) };
+    }
+    return { k: L.length - 1, p: 1 };
+  };
+  const place = (k, p) => {
+    const path = paths[k], len = lens[k], pt = path.getPointAtLength(p * len), pt2 = path.getPointAtLength(Math.min(len, p * len + 1)), pt0 = path.getPointAtLength(Math.max(0, p * len - 1));
+    const ang = Math.atan2(pt2.y - pt0.y, pt2.x - pt0.x) * 180 / Math.PI;
+    plane.setAttribute("transform", `translate(${pt.x},${pt.y}) rotate(${ang})`);
+    const prev = paths.slice(0, k).map(x => x.getAttribute("d")).join(" ");
+    // 已飛過的部分畫成黃線
+    const seg = []; for (let s = 0; s <= 30; s++) { const q = path.getPointAtLength(p * len * s / 30); seg.push(`${s ? "L" : "M"}${q.x.toFixed(1)},${q.y.toFixed(1)}`); }
+    trail.setAttribute("d", prev + " " + seg.join(""));
+  };
+  const nowMs = Date.now();
+  if (nowMs >= t0 && nowMs <= t1) {
+    // 飛行中：顯示真實位置
+    const tick = () => {
+      const n = Date.now(), w = where(n);
+      place(w.k, w.p);
+      bar.style.width = ((n - t0) / (t1 - t0) * 100).toFixed(1) + "%";
+      st.innerHTML = w.ground ? `<span class="dot warn"></span>在${AP[L[w.k].from].name}轉機中・下一班 ${localT(L[w.k].dep, L[w.k].from)} 起飛` : `<span class="dot ok"></span>飛行中・${L[w.k].no || L[w.k].airline}・剩 <b>${durTxt(+new Date(L[w.k].arr) - n)}</b>`;
+      flightRAF = setTimeout(() => requestAnimationFrame(tick), 5000);
+    };
+    tick(); return;
+  }
+  const done = nowMs > t1;
+  const days = Math.ceil((t0 - nowMs) / 864e5);
+  st.innerHTML = done ? `<span class="dot ok"></span>已抵達 ✓` : `<span class="dot warn"></span>尚未起飛・倒數 <b>${days}</b> 天・下面是飛行過程模擬`;
+  bar.style.width = done ? "100%" : "0";
+  if (done) { place(L.length - 1, 1); return; }
+  // 模擬：依各段飛行時間比例跑一輪（約 6 秒），轉機時停一下
+  const durs = L.map(l => +new Date(l.arr) - +new Date(l.dep)), sum = durs.reduce((a, b) => a + b, 0);
+  const total = 6000, pause = 700;
+  const start = performance.now();
+  const loop = now => {
+    let t = (now - start) % (total + pause * (L.length - 1) + 1200);
+    let acc = 0;
+    for (let k = 0; k < L.length; k++) {
+      const d = durs[k] / sum * total;
+      if (t <= acc + d) { place(k, (t - acc) / d); break; }
+      acc += d;
+      if (k < L.length - 1) { if (t <= acc + pause) { place(k, 1); break; } acc += pause; }
+      else place(k, 1);
+    }
+    flightRAF = requestAnimationFrame(loop);
+  };
+  flightRAF = requestAnimationFrame(loop);
 }
 
 /* =========================================================
@@ -159,25 +310,13 @@ const ICONS = {
 };
 const MODE_C = { "地鐵": "var(--cyan)", "JR": "var(--green)", "京阪": "var(--purple)", "阪急": "var(--purple)", "阪神": "var(--purple)", "近鐵": "var(--purple)", "叡電": "var(--purple)", "南海": "var(--purple)", "纜車": "var(--yellow)", "公車": "var(--yellow)", "步行": "var(--dim)", "計程車": "var(--orange)", "飛機": "var(--pink)", "船": "var(--cyan)" };
 const HUE = { cyan: "var(--cyan)", pink: "var(--pink)", purple: "var(--purple)", yellow: "var(--yellow)" };
-const KATANA = `<svg class="kat" viewBox="0 0 330 46" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="blade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#bff8ff"/><stop offset="1" stop-color="#05d9e8"/></linearGradient>
-    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff2a6d"/><stop offset="1" stop-color="#05d9e8"/></linearGradient>
-  </defs>
-  <path d="M6 24 Q120 10 236 18 L236 28 Q120 22 6 24 Z" fill="url(#blade)"/>
-  <path d="M6 24 Q120 11 236 19" stroke="url(#edge)" stroke-width="1.6" fill="none"/>
-  <path d="M40 22 Q130 13 230 20" stroke="#ff2a6d" stroke-width=".8" fill="none" opacity=".8" stroke-dasharray="6 3"/>
-  <rect x="234" y="16" width="6" height="14" rx="1" fill="#f9f871"/>
-  <ellipse cx="244" cy="23" rx="4" ry="15" fill="#1a1033" stroke="#ff2a6d" stroke-width="2"/>
-  <rect x="248" y="17" width="72" height="12" rx="3" fill="#1a1033" stroke="#b967ff" stroke-width="1.2"/>
-  <path d="M252 17 l6 6 -6 6 M262 17 l6 6 -6 6 M272 17 l6 6 -6 6 M282 17 l6 6 -6 6 M292 17 l6 6 -6 6 M302 17 l6 6 -6 6" stroke="#05d9e8" stroke-width="1.6" fill="none"/>
-  <rect x="318" y="16" width="8" height="14" rx="2" fill="#ff2a6d"/>
-</svg>`;
+const KATANA = `<img class="kat" src="images/katana.png" alt="">`;
 const FX = `<div class="fx" id="fx"><div class="flash"></div>${KATANA}
   <svg class="cut" viewBox="0 0 100 100" preserveAspectRatio="none"><defs><linearGradient id="cg" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#05d9e8"/><stop offset="1" stop-color="#ff2a6d"/></linearGradient></defs>
   <line x1="102" y1="12" x2="-2" y2="90" stroke="url(#cg)" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>
-  <div class="zan">斬</div></div>`;
+  <div class="zan">ザシュッ！</div></div>`;
 let curDay = 0;
+new Image().src = "images/katana.png";
 function initDays() {
   const railIn = $("#railIn");
   railIn.innerHTML = T.days.map((d, i) =>
@@ -207,9 +346,9 @@ function selectDay(i, anim) {
   view.insertAdjacentHTML("beforeend", FX);
   const fx = $("#fx"); fx.style.top = top + "px"; fx.style.height = h + "px";
   requestAnimationFrame(() => fx.classList.add("go"));
-  const card = $(".dcard", view); card.classList.add("shake");
+  view.classList.add("shake");
   if (navigator.vibrate) setTimeout(() => navigator.vibrate(30), 300);
-  setTimeout(() => { halves.forEach(x => x.remove()); fx.remove(); card.classList.remove("shake"); slashing = false; }, 1000);
+  setTimeout(() => { halves.forEach(x => x.remove()); fx.remove(); view.classList.remove("shake"); slashing = false; }, 1000);
 }
 function renderDay(d, delay = 0) {
   const c = HUE[d.hue] || "var(--cyan)";

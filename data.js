@@ -19,13 +19,31 @@ window.TRIP = {
   // 首頁背景圖：Gemini 畫好後放到 images/ 資料夾，填檔名，例如 "images/hero.jpg"
   HERO_IMAGE: "images/hero.jpg",
 
+  // 機場：lat/lon 用來畫航線地圖；tz 是時區（台灣 +8，韓國、日本 +9）
+  airports: {
+    TPE: { name: "桃園", lat: 25.08, lon: 121.23, tz: 8 },
+    KHH: { name: "高雄", lat: 22.58, lon: 120.35, tz: 8 },
+    TAE: { name: "大邱", lat: 35.90, lon: 128.66, tz: 9 },
+    KIX: { name: "關西", lat: 34.43, lon: 135.24, tz: 9 }
+  },
+
+  // 去程依出發日期分頁；回程只有一筆
+  flightDates: ["1/13", "1/14", "1/15", "1/16"],
   flights: [
-    { tag: "我們 3 人・去程 ①", color: "cyan", date: "1/13（三）", no: "TW664", from: "桃園 T1", fromT: "01:55", to: "大邱", toT: "05:20", dur: "2h 25m", note: "大邱要入境：領行李、重新託運（轉機 2h40m）" },
-    { tag: "我們 3 人・去程 ②", color: "cyan", date: "1/13（三）", no: "TW509", from: "大邱", fromT: "08:00", to: "關西 T1", toT: "09:30", dur: "1h 30m", note: "" },
-    { tag: "京都會合 1 人", color: "purple", date: "1/14（四）", no: "CI176", from: "高雄", fromT: "15:25", to: "關西 T1", toT: "19:10", dur: "2h 45m", note: "約 21:30 到京都站" },
-    { tag: "大阪會合 A 批", color: "yellow", date: "1/16（六）", no: "IT210", from: "桃園 T1", fromT: "07:00", to: "關西 T1", toT: "10:25", dur: "2h 25m", note: "" },
-    { tag: "大阪會合 B 批", color: "yellow", date: "1/16（六）", no: "樂桃", from: "桃園", fromT: "09:40", to: "關西 T2", toT: "13:10", dur: "2h 30m", note: "第 2 航廈，搭免費接駁巴士到關西機場站" },
-    { tag: "回程・全員", color: "pink", date: "1/21（四）", no: "GK055", from: "關西 T1", fromT: "14:55", to: "桃園 T1", toT: "17:15", dur: "3h 20m", note: "捷星廉航：最晚 12:55 到機場" }
+    { date: "1/13", who: "我們 3 人", color: "cyan",
+      note: "大邱要入境：領行李、重新託運（轉機 2h40m）",
+      legs: [
+        { no: "TW664", airline: "德威航空", from: "TPE", fromT: "T1", to: "TAE", dep: "2027-01-13T01:55+08:00", arr: "2027-01-13T05:20+09:00" },
+        { no: "TW509", airline: "德威航空", from: "TAE", to: "KIX", toT: "T1", dep: "2027-01-13T08:00+09:00", arr: "2027-01-13T09:30+09:00" }
+      ] },
+    { date: "1/14", who: "京都會合 1 人", color: "purple", note: "約 21:30 到京都站",
+      legs: [ { no: "CI176", airline: "中華航空", from: "KHH", to: "KIX", toT: "T1", dep: "2027-01-14T15:25+08:00", arr: "2027-01-14T19:10+09:00" } ] },
+    { date: "1/16", who: "大阪會合 A 批", color: "yellow", note: "",
+      legs: [ { no: "IT210", airline: "台灣虎航", from: "TPE", fromT: "T1", to: "KIX", toT: "T1", dep: "2027-01-16T07:00+08:00", arr: "2027-01-16T10:25+09:00" } ] },
+    { date: "1/16", who: "大阪會合 B 批", color: "yellow", note: "第 2 航廈，搭免費接駁巴士到關西機場站",
+      legs: [ { no: "", airline: "樂桃航空", from: "TPE", to: "KIX", toT: "T2", dep: "2027-01-16T09:40+08:00", arr: "2027-01-16T13:10+09:00" } ] },
+    { ret: true, who: "回程・全員", color: "pink", note: "捷星廉航：最晚 12:55 到機場",
+      legs: [ { no: "GK055", airline: "捷星日本", from: "KIX", fromT: "T1", to: "TPE", toT: "T1", dep: "2027-01-21T14:55+09:00", arr: "2027-01-21T17:15+08:00" } ] }
   ],
 
   days: [
