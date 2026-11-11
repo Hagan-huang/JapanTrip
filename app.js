@@ -276,7 +276,20 @@ function openFlight(f) {
   document.body.style.overflow = "hidden";
   animateFlight(f);
 }
+function openDriver(x) {
+  const sh = $("#sheet"); sh.classList.add("white");
+  sh.innerHTML = `<div class="driver">
+    <div class="lead">こちらまでお願いします。</div><div class="zh">（請載我到這裡）</div>
+    <div class="nm">${esc(x.name)}</div>
+    ${x.zip ? `<div class="zip">${esc(x.zip)}</div>` : ""}<div class="ad">${esc(x.addr)}</div>
+    ${x.note ? `<div class="nt">${esc(x.note)}</div>` : ""}
+    ${x.tel ? `<a class="tel" href="tel:${esc(x.tel)}">☎ ${esc(x.tel)}</a>` : ""}
+    <div class="row2"><a class="btn sm" href="${mapUrl(x.map || x.addr)}" target="_blank" rel="noopener">開啟地圖 ↗</a><button class="btn sm xx">關閉</button></div>
+  </div>`;
+  $("#modal").classList.add("open"); document.body.style.overflow = "hidden";
+}
 function closeFlight() {
+  $("#sheet").classList.remove("white");
   $("#modal").classList.remove("open"); document.body.style.overflow = ""; cancelAnimationFrame(flightRAF); clearTimeout(flightRAF);
 }
 function animateFlight(f) {
@@ -482,11 +495,29 @@ function initPrep() {
     LISTS[key] = LISTS[key].filter(x => x.id !== id); delete CHECKS[id];
     store.set("checks", CHECKS); save(); render();
   });
+  // 給司機看
+  const dests = [...T.stays.filter(s => s.ja).map(s => ({ key: "s" + T.stays.indexOf(s), label: s.name, ...s.ja, map: s.map })), ...(T.taxi || []).map((t, i) => ({ key: "t" + i, map: t.name, ...t }))];
+  $("#taxiBox").innerHTML = `<div class="card glow" style="--c:var(--pink)"><h4 style="color:var(--pink);margin-bottom:4px">🚕 給司機看</h4>
+    <div class="hint" style="margin:0 0 10px">搭計程車時點一下，把手機拿給司機看日文地址</div>
+    <div class="taxis">${dests.map(x => `<button class="btn" data-taxi="${x.key}">${esc(x.label)} ▸</button>`).join("")}</div></div>`;
+  $("#prep").addEventListener("click", e => {
+    const b = e.target.closest("[data-taxi]"); if (!b) return;
+    const x = dests.find(d => d.key === b.dataset.taxi); if (x) openDriver(x);
+  });
+  // 加到主畫面提示（已經是 App 模式就不顯示）
+  const standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+  if (!standalone && !store.get("hideInstall", false)) {
+    const ios = /iP(hone|ad|od)/.test(navigator.userAgent);
+    $("#installHint").innerHTML = `<div class="card glow" style="--c:var(--cyan)"><div class="inst"><img src="images/apple-touch-icon.png" alt="">
+      <div><b>📲 加到主畫面，像 App 一樣用</b><p>${ios ? "Safari 下方點「分享」<b style='display:inline'>⬆</b> →「加入主畫面」。" : "瀏覽器選單 →「加到主畫面」或「安裝應用程式」。"}全螢幕不會被網址列擋住，沒網路時也打得開行程。</p></div>
+      <button class="x" id="hideInst" aria-label="關閉">✕</button></div></div>`;
+    $("#hideInst").onclick = () => { store.set("hideInstall", true); $("#installHint").innerHTML = ""; };
+  }
   $("#stayList").innerHTML = T.stays.map(s => `
     <div class="card glow stay" style="--c:var(--purple)">
       <span class="dd">${esc(s.date)}</span><h4>${esc(s.name)}</h4>
       <p>📍 ${esc(s.addr)}</p><p>🚉 ${esc(s.station)}</p><p>🕒 ${esc(s.time)}</p>${s.extra ? `<p>⚠ ${esc(s.extra)}</p>` : ""}
-      <div class="mt"><a class="btn sm" href="${mapUrl(s.map)}" target="_blank" rel="noopener">開啟地圖 ↗</a></div>
+      <div class="mt row2"><a class="btn sm" href="${mapUrl(s.map)}" target="_blank" rel="noopener">開啟地圖 ↗</a>${s.ja ? `<button class="btn sm pink" data-taxi="s${T.stays.indexOf(s)}">🚕 給司機看</button>` : ""}</div>
     </div>`).join("");
 }
 
@@ -1011,6 +1042,7 @@ function initTabs() {
   $("#enter").addEventListener("click", enter);
 }
 
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 initHero(); initFlights(); initDays(); initPrep(); initMoney(); initTabs();
 window.__ready = true; updateBanners();
 $("#foot").innerHTML = `LAST UPDATE ${esc(T.updated)}・${window.APP_VER || ""}<br>行程是草稿，隨時會改`;

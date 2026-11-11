@@ -1,0 +1,17 @@
+{
+  "name": "京都・大阪 9 天 8 夜",
+  "short_name": "KANSAI 2027",
+  "description": "2027.1.13–1.21 京都大阪旅行：航班、行程、準備、記帳",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07060f",
+  "theme_color": "#07060f",
+  "lang": "zh-Hant",
+  "icons": [
+    { "src": "images/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

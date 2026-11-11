@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07060f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="images/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KANSAI 2027">
 <title>京都・大阪 9 天 8 夜｜2027.1.13–1.21</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -353,6 +360,26 @@ html,body{overflow-x:hidden;max-width:100%}
 .pax .pn{padding:1px 9px;border:1px solid var(--c,var(--cyan));color:var(--text);border-radius:999px;background:color-mix(in srgb,var(--c,var(--cyan)) 12%,transparent)}
 .pax .pn.me{background:var(--c,var(--cyan));color:var(--bg);font-weight:900}
 .pax .none{color:var(--dim)}
+/* ---------- install hint & taxi card ---------- */
+.inst{display:flex;gap:12px;align-items:flex-start}
+.inst img{width:52px;height:52px;border-radius:12px;flex:none;box-shadow:0 0 10px rgba(5,217,232,.5)}
+.inst b{display:block;margin-bottom:2px}
+.inst p{font-size:13px;color:var(--dim);line-height:1.6}
+.inst .x{margin-left:auto;flex:none}
+.taxis{display:grid;gap:8px}
+.taxis .btn{justify-content:flex-start;text-align:left}
+.driver{background:#fff;color:#111;padding:22px 20px 26px;border-top:6px solid var(--pink)}
+.driver .lead{font-size:20px;font-weight:900;letter-spacing:.04em}
+.driver .zh{font-size:12px;color:#666;margin-top:2px}
+.driver .nm{font-size:30px;font-weight:900;line-height:1.3;margin:18px 0 6px}
+.driver .zip{font-size:16px;color:#444;font-family:var(--mono)}
+.driver .ad{font-size:24px;font-weight:700;line-height:1.5;margin-top:2px}
+.driver .nt{font-size:18px;margin-top:12px;padding:10px 12px;background:#f3f3f3;border-left:4px solid var(--pink)}
+.driver .tel{display:block;font-size:20px;margin-top:12px;color:#06c;font-weight:700}
+.driver .row2{margin-top:18px}
+.driver .btn{--c:#111;color:#111}
+.driver .xx{width:auto;height:auto;margin-left:0;font-size:12px;border:1.5px solid #111}
+.sheet.white{background:#fff;border-top:0;padding:0;box-shadow:none}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -404,9 +431,11 @@ html,body{overflow-x:hidden;max-width:100%}
       <div class="bt"><small>ジュンビ</small><h2 data-t="出發前準備">出發前準備</h2><div class="bs" data-bs="prep"></div></div>
     </div>
     <div class="wrap">
-    <div class="card ck" id="todoBox"></div>
+    <div id="installHint"></div>
+<div class="card ck" id="todoBox"></div>
     <div class="card ck" id="shopBox"></div>
-    <div id="stayList"></div>
+    <div id="taxiBox"></div>
+<div id="stayList"></div>
   
     </div>
   </section>
@@ -440,8 +469,8 @@ html,body{overflow-x:hidden;max-width:100%}
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
-<script>window.APP_VER="v2026111130"</script>
-<script src="data.js?v=2026111130"></script>
-<script src="app.js?v=2026111130"></script>
+<script>window.APP_VER="v2026111131"</script>
+<script src="data.js?v=2026111131"></script>
+<script src="app.js?v=2026111131"></script>
 </body>
 </html>
