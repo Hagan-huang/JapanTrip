@@ -510,13 +510,15 @@ const M = {
 const remote = !!T.SHEET_URL;
 
 // ---- 後端：Google 試算表；沒設定網址時用本機測試模式 ----
+// Google 程式有時要好幾秒才回應；超過 20 秒就當作失敗
+const fetchT = (url, opt = {}, ms = 20000) => { const c = new AbortController(), t = setTimeout(() => c.abort(), ms); return fetch(url, { ...opt, signal: c.signal }).finally(() => clearTimeout(t)); };
 const api = remote ? {
   async list() {
-    const r = await fetch(`${T.SHEET_URL}?action=list&key=${encodeURIComponent(M.key)}`);
+    const r = await fetchT(`${T.SHEET_URL}?action=list&key=${encodeURIComponent(M.key)}`);
     return r.json();
   },
   async post(body) {
-    const r = await fetch(T.SHEET_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ name: M.me, ...body, key: M.key, pin: Acct.pin }) });
+    const r = await fetchT(T.SHEET_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ name: M.me, ...body, key: M.key, pin: Acct.pin }) });
     return r.json();
   }
 } : {
@@ -855,16 +857,21 @@ async function doJoin(root) {
   if (!name) return toast("請輸入暱稱");
   if (pin.length < 4) return toast("個人密碼至少 4 個字");
   if (remote) { M.key = ($(".jKey", root).value || "").trim(); if (!M.key) return toast("請輸入團體密碼"); store.set("key", M.key); }
+  const btn = $("[data-join]", root);
+  if (btn) { if (btn.classList.contains("busy")) return; btn.classList.add("busy"); btn.textContent = "登入中"; }
+  const done = () => { if (btn && btn.isConnected) { btn.classList.remove("busy"); btn.textContent = "登入"; } };
   try {
     const r = await api.post({ action: "join", name, pin });
+    done();
     if (!r.ok) { if (r.error === "密碼錯誤") { M.key = ""; store.set("key", ""); toast("團體密碼錯誤"); return; } return toast(r.error || "登入失敗"); }
     // 換了帳號：先清掉這支手機上別人的個人資料
     if (M.me && M.me !== name && Acct.pin) Acct.clearLocal();
     M.me = name; store.set("me", name); Acct.pin = pin; store.set("pin", pin); M.form.splitTouched = false;
-    if (r.data) { Acct.apply(Acct.merge(r.data, true)); Acct.push(); toast(`歡迎回來，${name}`); }
-    else { Acct.push(); toast(`帳號建立好了，${name}`); }
+    if (remote && !("data" in r)) toast("登入了，但 Apps Script 還是舊版，個人資料還不會同步，請照步驟更新");
+    else if (r.data) { Acct.apply(Acct.merge(r.data, true)); Acct.push(); toast(`歡迎回來，${name}`); }
+    else { Acct.push(); toast(r.exists ? `登入成功，${name}` : `帳號建立好了，${name}`); }
     await sync(true);
-  } catch { toast("連不上網路，請稍後再試"); }
+  } catch (e) { done(); toast(e && e.name === "AbortError" ? "Google 回應太久，請再按一次" : "連不上共用帳本，請確認網路或 Apps Script 有沒有部署好"); }
 }
 
 async function doRename() {
