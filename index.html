@@ -213,7 +213,9 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:30px 0 50px;fon
 @keyframes speed{0%{opacity:0}20%{opacity:1}100%{opacity:0}}
 
 /* ---------- katana slash ---------- */
-#dayView{position:relative}
+#dayView{position:relative;overflow-x:clip}
+.page{overflow-x:hidden;overflow-x:clip}
+html,body{overflow-x:hidden;max-width:100%}
 .fx{position:absolute;left:0;right:0;top:0;height:150px;pointer-events:none;z-index:5;overflow:visible}
 .fx .kat{position:absolute;right:-10px;top:50%;width:360px;height:auto;margin-top:-23px;transform-origin:92% 50%;opacity:0;filter:drop-shadow(0 0 8px rgba(5,217,232,.8)) drop-shadow(0 0 16px rgba(255,42,109,.5))}
 .fx.go .kat{animation:swing .52s cubic-bezier(.7,0,.2,1) forwards}
@@ -390,8 +392,8 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:30px 0 50px;fon
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
-<script>window.APP_VER="v2026111120"</script>
-<script src="data.js?v=2026111120"></script>
-<script src="app.js?v=2026111120"></script>
+<script>window.APP_VER="v2026111121"</script>
+<script src="data.js?v=2026111121"></script>
+<script src="app.js?v=2026111121"></script>
 </body>
 </html>
