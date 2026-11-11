@@ -17,7 +17,7 @@ window.TRIP = {
   SHEET_URL: "",
 
   // 首頁背景圖：Gemini 畫好後放到 images/ 資料夾，填檔名，例如 "images/hero.jpg"
-  HERO_IMAGE: "",
+  HERO_IMAGE: "images/hero.jpg",
 
   flights: [
     { tag: "我們 3 人・去程 ①", color: "cyan", date: "1/13（三）", no: "TW664", from: "桃園 T1", fromT: "01:55", to: "大邱", toT: "05:20", dur: "2h 25m", note: "大邱要入境：領行李、重新託運（轉機 2h40m）" },

@@ -85,12 +85,17 @@ function initHero() {
   $("#tTitle").textContent = T.title; $("#tTitle").dataset.t = T.title;
   $("#tRange").textContent = T.range;
   const art = $("#heroArt");
-  art.innerHTML = heroSVG();
   if (T.HERO_IMAGE) {
     const img = new Image(); img.className = "bg"; img.alt = "";
-    img.onload = () => { art.innerHTML = ""; art.appendChild(img); };
+    img.onload = () => {
+      art.innerHTML = ""; art.appendChild(img);
+      const g = document.createElement("div"); g.className = "sunglow"; art.appendChild(g);
+      // 捲動時背景慢慢移動（視差）
+      addEventListener("scroll", () => { const y = Math.min(scrollY, 600); img.style.transform = `scale(1.04) translateY(${y * 0.12}px)`; }, { passive: true });
+    };
+    img.onerror = () => { art.innerHTML = heroSVG(); };
     img.src = T.HERO_IMAGE;
-  }
+  } else art.innerHTML = heroSVG();
   // 倒數
   const ms = new Date(T.departAt) - new Date();
   const days = Math.ceil(ms / 864e5);
@@ -149,28 +154,33 @@ const ICONS = {
   boat: '<path d="M5 24h30l-5 7H10z"/><path d="M20 24V8l10 12H20"/><path d="M3 35q4-3 8 0t8 0 8 0 8 0"/>',
   fox: '<path d="M8 6l6 10h12l6-10 2 16-14 12L6 22z"/><circle cx="15" cy="21" r="1.5"/><circle cx="25" cy="21" r="1.5"/><path d="M18 27h4"/>',
   deer: '<path d="M14 14q-6-4-4-10M14 10l-4 0M26 14q6-4 4-10M26 10h4"/><path d="M13 16q7-4 14 0l-2 14q-5 4-10 0z"/><circle cx="17" cy="21" r="1.2"/><circle cx="23" cy="21" r="1.2"/>',
-  ninja: '<circle cx="20" cy="18" r="12"/><path d="M8 16h24v6H8z"/><path d="M15 19h3M22 19h3"/><path d="M31 15l6-4M31 18l7 0"/><path d="M14 30l-4 6M26 30l4 6"/>',
+  ninja: '<path d="M20 4l4 12 12 4-12 4-4 12-4-12-12-4 12-4z"/><circle cx="20" cy="20" r="3"/>',
   fall: '<path d="M6 8h28"/><path d="M12 8v18M18 8v22M24 8v20M30 8v16"/><path d="M4 33q5-4 10 0t10 0 10 0"/>'
 };
 const MODE_C = { "地鐵": "var(--cyan)", "JR": "var(--green)", "京阪": "var(--purple)", "阪急": "var(--purple)", "阪神": "var(--purple)", "近鐵": "var(--purple)", "叡電": "var(--purple)", "南海": "var(--purple)", "纜車": "var(--yellow)", "公車": "var(--yellow)", "步行": "var(--dim)", "計程車": "var(--orange)", "飛機": "var(--pink)", "船": "var(--cyan)" };
 const HUE = { cyan: "var(--cyan)", pink: "var(--pink)", purple: "var(--purple)", yellow: "var(--yellow)" };
-const NINJA = `<svg viewBox="0 0 64 64" width="52" height="56" xmlns="http://www.w3.org/2000/svg">
-  <defs><filter id="ng" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-  <g class="bob">
-    <g class="scarf"><path d="M44 21 Q54 18 60 24 Q53 22 50 27 Q48 23 44 24Z" fill="#ff2a6d" filter="url(#ng)"/></g>
-    <line x1="20" y1="34" x2="10" y2="52" stroke="#05d9e8" stroke-width="2" filter="url(#ng)"/>
-    <rect x="22" y="36" width="20" height="18" rx="6" fill="#1a1033" stroke="#b967ff" stroke-width="1.5"/>
-    <path d="M26 54v4M38 54v4" stroke="#b967ff" stroke-width="3" stroke-linecap="round"/>
-    <circle cx="32" cy="23" r="15" fill="#1a1033" stroke="#ff2a6d" stroke-width="1.5" filter="url(#ng)"/>
-    <rect x="18" y="19" width="28" height="9" rx="4.5" fill="#05d9e8" filter="url(#ng)"/>
-    <g class="eyes"><rect x="24" y="21" width="5" height="5" rx="1" fill="#07060f"/><rect x="35" y="21" width="5" height="5" rx="1" fill="#07060f"/></g>
-    <path d="M25 33 L32 30 L39 33" stroke="#ff2a6d" stroke-width="1.5" fill="none"/>
-  </g></svg>`;
-
+const KATANA = `<svg class="kat" viewBox="0 0 330 46" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="blade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#bff8ff"/><stop offset="1" stop-color="#05d9e8"/></linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff2a6d"/><stop offset="1" stop-color="#05d9e8"/></linearGradient>
+  </defs>
+  <path d="M6 24 Q120 10 236 18 L236 28 Q120 22 6 24 Z" fill="url(#blade)"/>
+  <path d="M6 24 Q120 11 236 19" stroke="url(#edge)" stroke-width="1.6" fill="none"/>
+  <path d="M40 22 Q130 13 230 20" stroke="#ff2a6d" stroke-width=".8" fill="none" opacity=".8" stroke-dasharray="6 3"/>
+  <rect x="234" y="16" width="6" height="14" rx="1" fill="#f9f871"/>
+  <ellipse cx="244" cy="23" rx="4" ry="15" fill="#1a1033" stroke="#ff2a6d" stroke-width="2"/>
+  <rect x="248" y="17" width="72" height="12" rx="3" fill="#1a1033" stroke="#b967ff" stroke-width="1.2"/>
+  <path d="M252 17 l6 6 -6 6 M262 17 l6 6 -6 6 M272 17 l6 6 -6 6 M282 17 l6 6 -6 6 M292 17 l6 6 -6 6 M302 17 l6 6 -6 6" stroke="#05d9e8" stroke-width="1.6" fill="none"/>
+  <rect x="318" y="16" width="8" height="14" rx="2" fill="#ff2a6d"/>
+</svg>`;
+const FX = `<div class="fx" id="fx"><div class="flash"></div>${KATANA}
+  <svg class="cut" viewBox="0 0 100 100" preserveAspectRatio="none"><defs><linearGradient id="cg" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#05d9e8"/><stop offset="1" stop-color="#ff2a6d"/></linearGradient></defs>
+  <line x1="102" y1="12" x2="-2" y2="90" stroke="url(#cg)" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>
+  <div class="zan">斬</div></div>`;
 let curDay = 0;
 function initDays() {
   const railIn = $("#railIn");
-  railIn.innerHTML = `<div class="ninja" id="ninja">${NINJA}</div>` + T.days.map((d, i) =>
+  railIn.innerHTML = T.days.map((d, i) =>
     `<button class="dt" data-i="${i}"><span class="d">${esc(d.date)}</span><span class="w">週${esc(d.dow)}</span></button>`).join("");
   railIn.addEventListener("click", e => { const b = e.target.closest(".dt"); if (b) selectDay(+b.dataset.i, true); });
   // 旅行中預設選今天
@@ -178,17 +188,30 @@ function initDays() {
   const idx = T.days.findIndex(d => { const [m, dd] = d.date.split("/").map(Number); const x = new Date(y, m - 1, dd); return x.toDateString() === now.toDateString(); });
   selectDay(idx >= 0 ? idx : 0, false);
 }
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let slashing = false;
 function selectDay(i, anim) {
+  if (anim && (i === curDay || slashing)) return;
   curDay = i;
   $$(".dt").forEach((b, j) => b.classList.toggle("on", j === i));
-  const n = $("#ninja");
-  n.style.transform = `translateX(${4 + i * 64 + 6}px)`;
-  if (anim) { n.classList.remove("jump"); void n.offsetWidth; n.classList.add("jump"); }
   const rail = $("#rail"), target = 4 + i * 64 + 32 - rail.clientWidth / 2;
   rail.scrollTo({ left: Math.max(0, target), behavior: anim ? "smooth" : "auto" });
-  renderDay(T.days[i]);
+  const view = $("#dayView"), old = $(".dcard", view);
+  if (!anim || reduce || !old) { renderDay(T.days[i], 0); return; }
+  // 斬擊：舊卡片被切成兩半飛開，新卡片出現
+  slashing = true;
+  const top = old.offsetTop, h = old.offsetHeight;
+  const halves = ["a", "b"].map(k => { const c = old.cloneNode(true); c.classList.add("half", k); c.style.top = top + "px"; c.style.left = "0"; c.style.right = "0"; return c; });
+  renderDay(T.days[i], 320);
+  view.append(...halves);
+  view.insertAdjacentHTML("beforeend", FX);
+  const fx = $("#fx"); fx.style.top = top + "px"; fx.style.height = h + "px";
+  requestAnimationFrame(() => fx.classList.add("go"));
+  const card = $(".dcard", view); card.classList.add("shake");
+  if (navigator.vibrate) setTimeout(() => navigator.vibrate(30), 300);
+  setTimeout(() => { halves.forEach(x => x.remove()); fx.remove(); card.classList.remove("shake"); slashing = false; }, 1000);
 }
-function renderDay(d) {
+function renderDay(d, delay = 0) {
   const c = HUE[d.hue] || "var(--cyan)";
   const items = d.items.map((it, k) => {
     const tbd = it.tbd ? '<span class="tbdl">待定</span>' : "";
@@ -204,10 +227,10 @@ function renderDay(d) {
       const inner = `${it.map ? '<span class="m">MAP ↗</span>' : ""}<div class="n">${tbd}${esc(it.text)}${pp}</div>${note}${close}`;
       body = it.map ? `<a class="spot" href="${mapUrl(it.map)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="spot">${inner}</div>`;
     }
-    return `<div class="it t-${it.type}${it.tbd ? " tbd" : ""}" style="animation-delay:${k * 40}ms"><span class="tm">${esc(it.t)}</span>${body}</div>`;
+    return `<div class="it t-${it.type}${it.tbd ? " tbd" : ""}" style="animation-delay:${delay + 120 + k * 40}ms"><span class="tm">${esc(it.t)}</span>${body}</div>`;
   }).join("");
   $("#dayView").innerHTML = `
-    <div class="card glow dcard" style="--c:${c}">
+    <div class="card glow dcard" style="--c:${c};animation-delay:${delay}ms;animation-fill-mode:backwards">
       <div class="art"><svg viewBox="0 0 40 40" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[d.icon] || ICONS.torii}</svg></div>
       <div><div class="k">DAY ${T.days.indexOf(d) + 1} · ${esc(d.date)} 週${esc(d.dow)}</div><h3>${esc(d.title)}</h3>
       <div class="s">住 ${esc(d.stay)}<span class="pp">${esc(d.people)}</span></div></div>
