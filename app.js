@@ -412,17 +412,35 @@ function renderDay(d, delay = 0) {
 /* =========================================================
    Prep
    ========================================================= */
+// 待辦／待買清單：可以新增、刪除，存在這支手機
+const LISTS = store.get("lists", null) || { todo: T.todo.map(x => ({ ...x })), shopping: T.shopping.map(x => ({ ...x })) };
 function initPrep() {
   const checks = store.get("checks", {});
-  const box = (el, title, list) => {
-    const done = list.filter(x => checks[x.id]).length;
-    el.innerHTML = `<h4>${title}<span class="prog">${done}/${list.length}</span></h4>` + list.map(x =>
-      `<label><input type="checkbox" data-id="${esc(x.id)}" ${checks[x.id] ? "checked" : ""}><span>${esc(x.text)}</span></label>`).join("");
+  const save = () => store.set("lists", LISTS);
+  const box = (el, key, title) => {
+    const list = LISTS[key], done = list.filter(x => checks[x.id]).length;
+    el.innerHTML = `<h4>${title}<span class="prog">${done}/${list.length}</span></h4>` +
+      (list.length ? list.map(x => `<div class="ckrow"><label><input type="checkbox" data-id="${esc(x.id)}" ${checks[x.id] ? "checked" : ""}><span>${esc(x.text)}</span></label><button class="x" data-del="${key}:${esc(x.id)}" aria-label="刪除">✕</button></div>`).join("") : `<div class="empty">清單是空的</div>`) +
+      `<form class="addrow" data-add="${key}"><input class="in" maxlength="60" placeholder="新增一項…"><button class="btn sm" type="submit">＋ 加入</button></form>`;
   };
-  const render = () => { box($("#todoBox"), "待辦清單", T.todo); box($("#shopBox"), "待買清單", T.shopping); if (window.__ready) updateBanners(); };
+  const render = () => { box($("#todoBox"), "todo", "待辦清單"); box($("#shopBox"), "shopping", "待買清單"); if (window.__ready) updateBanners(); };
   render();
   $("#prep").addEventListener("change", e => {
     if (e.target.dataset.id) { checks[e.target.dataset.id] = e.target.checked; store.set("checks", checks); render(); }
+  });
+  $("#prep").addEventListener("submit", e => {
+    const f = e.target.closest("[data-add]"); if (!f) return;
+    e.preventDefault();
+    const text = f.querySelector("input").value.trim(); if (!text) return;
+    LISTS[f.dataset.add].push({ id: "u" + uid(), text }); save(); render();
+    const inp = $(`[data-add="${f.dataset.add}"] input`); inp && inp.focus();
+  });
+  $("#prep").addEventListener("click", e => {
+    const b = e.target.closest("[data-del]"); if (!b) return;
+    const [key, id] = b.dataset.del.split(":"), item = LISTS[key].find(x => x.id === id);
+    if (!item || !confirm(`刪除「${item.text}」？`)) return;
+    LISTS[key] = LISTS[key].filter(x => x.id !== id); delete checks[id];
+    store.set("checks", checks); save(); render();
   });
   $("#stayList").innerHTML = T.stays.map(s => `
     <div class="card glow stay" style="--c:var(--purple)">
@@ -825,8 +843,8 @@ function updateBanners() {
   set("flights", `去程 <b>${out}</b> 班・回程 <b>${T.flights.length - out}</b> 班・點卡片看飛行過程`);
   const g = group === "all" ? "全部組別" : T.groups.find(x => x.id === group).name, d = T.days[curDay];
   set("days", `${esc(g)}・<b>${esc(d.date)}</b> 週${esc(d.dow)}・DAY ${curDay + 1}/${T.days.length}`);
-  const checks = store.get("checks", {}), all = [...T.todo, ...T.shopping], done = all.filter(x => checks[x.id]).length;
-  set("prep", `完成 <b>${done}/${all.length}</b><span class="pg"><i style="width:${done / all.length * 100}%"></i></span>`);
+  const checks = store.get("checks", {}), all = [...LISTS.todo, ...LISTS.shopping], done = all.filter(x => checks[x.id]).length;
+  set("prep", `完成 <b>${done}/${all.length}</b><span class="pg"><i style="width:${all.length ? done / all.length * 100 : 0}%"></i></span>`);
   if (typeof M !== "undefined") {
     const tot = mineList().reduce((a, r) => a + toJ(r.mine, r.currency), 0);
     set("money", M.me ? `${esc(M.me)}・我的花費 <b>${fmtJ(tot)}</b>` : `個人帳＋團體分帳・我的花費 <b>${fmtJ(tot)}</b>`);
