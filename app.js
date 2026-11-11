@@ -1,0 +1,641 @@
+(() => {
+"use strict";
+const T = window.TRIP;
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("kt_" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("kt_" + k, JSON.stringify(v)); } catch {} }
+};
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+const mapUrl = q => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+/* =========================================================
+   Hero
+   ========================================================= */
+function heroSVG() {
+  // 隨機但固定的窗戶
+  let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const cols = ["#05d9e8", "#ff2a6d", "#f9f871", "#b967ff"];
+  let bld = "", win = "";
+  const blds = [[0,190,34,130],[30,205,30,115],[56,175,26,145],[104,200,30,120],[132,215,22,105],[250,205,26,115],[272,185,22,135],[372,180,30,140],[350,210,26,110]];
+  blds.forEach(([x,y,w,h]) => {
+    bld += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#120826" stroke="#2a1550" stroke-width="1"/>`;
+    for (let yy = y + 8; yy < y + h - 6; yy += 9) for (let xx = x + 4; xx < x + w - 4; xx += 7)
+      if (rnd() > .62) win += `<rect x="${xx}" y="${yy}" width="3" height="4" fill="${cols[Math.floor(rnd()*4)]}" opacity="${(.35 + rnd()*.6).toFixed(2)}"/>`;
+  });
+  const stripes = [0,1,2,3,4].map(i => `<rect x="250" y="${92 + i*9}" width="100" height="${2 + i}" fill="#1c0733"/>`).join("");
+  return `<svg class="city" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05030f"/><stop offset=".55" stop-color="#1c0733"/><stop offset="1" stop-color="#3a0b3d"/></linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f9f871"/><stop offset=".6" stop-color="#ff2a6d"/><stop offset="1" stop-color="#b967ff"/></linearGradient>
+    <linearGradient id="gnd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a0a3f"/><stop offset="1" stop-color="#07060f"/></linearGradient>
+    <filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="gl2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter>
+  </defs>
+  <rect width="400" height="320" fill="url(#sky)"/>
+  <circle cx="300" cy="105" r="50" fill="#ff2a6d" opacity=".35" filter="url(#gl2)"/>
+  <circle cx="300" cy="105" r="44" fill="url(#sun)"/>${stripes}
+  <polygon points="0,215 60,170 110,200 170,160 230,195 290,165 340,190 400,170 400,240 0,240" fill="#170a30"/>
+  <!-- 五重塔 -->
+  <g stroke="#05d9e8" stroke-width="1.3" fill="#0d0620" filter="url(#gl)" class="flick2">
+    <line x1="80" y1="98" x2="80" y2="112"/>
+    <path d="M66 126 L80 112 L94 126 Z"/><rect x="72" y="126" width="16" height="10"/>
+    <path d="M62 146 L80 132 L98 146 Z"/><rect x="71" y="146" width="18" height="10"/>
+    <path d="M58 166 L80 152 L102 166 Z"/><rect x="70" y="166" width="20" height="10"/>
+    <path d="M54 186 L80 172 L106 186 Z"/><rect x="69" y="186" width="22" height="10"/>
+    <path d="M50 206 L80 192 L110 206 Z"/><rect x="68" y="206" width="24" height="24"/>
+  </g>
+  <!-- 大阪城 -->
+  <g stroke="#ff2a6d" stroke-width="1.3" fill="#0d0620" filter="url(#gl)" class="flick3">
+    <path d="M300 160 L316 148 L332 160 Z"/><rect x="304" y="160" width="24" height="12"/>
+    <path d="M294 180 L316 166 L338 180 Z"/><rect x="300" y="180" width="32" height="12"/>
+    <path d="M288 200 L316 186 L344 200 Z"/><rect x="296" y="200" width="40" height="14"/>
+    <path d="M284 214 L348 214 L356 236 L276 236 Z"/>
+  </g>
+  ${bld}${win}
+  <!-- 霓虹招牌 -->
+  <g font-family="Noto Sans TC,sans-serif" font-weight="900" font-size="11" text-anchor="middle" filter="url(#gl)">
+    <g class="flick"><rect x="36" y="210" width="16" height="46" fill="#07060f" stroke="#ff2a6d"/><text x="44" y="224" fill="#ff2a6d">京</text><text x="44" y="238" fill="#ff2a6d">都</text><text x="44" y="252" fill="#ff2a6d" font-size="8">◆</text></g>
+    <g class="flick3"><rect x="356" y="214" width="16" height="46" fill="#07060f" stroke="#05d9e8"/><text x="364" y="228" fill="#05d9e8">大</text><text x="364" y="242" fill="#05d9e8">阪</text><text x="364" y="256" fill="#05d9e8" font-size="8">◆</text></g>
+    <g class="flick2"><rect x="108" y="222" width="22" height="14" fill="#07060f" stroke="#f9f871"/><text x="119" y="233" fill="#f9f871" font-size="8">BAR</text></g>
+    <g class="flick"><rect x="252" y="226" width="22" height="30" fill="#07060f" stroke="#b967ff"/><text x="263" y="239" fill="#b967ff" font-size="8">忍</text><text x="263" y="251" fill="#b967ff" font-size="8">者</text></g>
+  </g>
+  <rect x="0" y="262" width="400" height="58" fill="url(#gnd)"/>
+  <!-- 鳥居 -->
+  <g fill="#ff2a6d" filter="url(#gl)">
+    <path d="M128 196 Q200 184 272 196 L274 204 Q200 193 126 204 Z"/>
+    <rect x="140" y="212" width="120" height="6"/>
+    <rect x="196" y="204" width="8" height="10"/>
+    <rect x="152" y="202" width="9" height="88"/>
+    <rect x="239" y="202" width="9" height="88"/>
+  </g>
+  <g fill="#ff2a6d" opacity=".25" transform="translate(0,580) scale(1,-1)"><rect x="152" y="290" width="9" height="40"/><rect x="239" y="290" width="9" height="40"/></g>
+  <g stroke="#05d9e8" stroke-width=".6" opacity=".35"><line x1="0" y1="296" x2="400" y2="296"/><line x1="0" y1="305" x2="400" y2="305"/><line x1="0" y1="316" x2="400" y2="316"/></g>
+</svg>`;
+}
+function initHero() {
+  $("#tCode").textContent = T.code;
+  $("#tTitle").textContent = T.title; $("#tTitle").dataset.t = T.title;
+  $("#tRange").textContent = T.range;
+  const art = $("#heroArt");
+  art.innerHTML = heroSVG();
+  if (T.HERO_IMAGE) {
+    const img = new Image(); img.className = "bg"; img.alt = "";
+    img.onload = () => { art.innerHTML = ""; art.appendChild(img); };
+    img.src = T.HERO_IMAGE;
+  }
+  // 倒數
+  const ms = new Date(T.departAt) - new Date();
+  const days = Math.ceil(ms / 864e5);
+  $("#count").innerHTML = days > 0 ? `出發倒數 <b>${days}</b> 天` : days > -9 ? `旅行中 <b>DAY ${1 - days}</b>` : `旅程結束 <b>✓</b>`;
+  // 雨
+  const cv = $("#rain"), cx = cv.getContext("2d");
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let W, H, drops = [];
+  const resize = () => {
+    const r = devicePixelRatio || 1; W = cv.clientWidth; H = cv.clientHeight;
+    cv.width = W * r; cv.height = H * r; cx.setTransform(r, 0, 0, r, 0, 0);
+    drops = Array.from({ length: Math.round(W / 6) }, () => ({ x: Math.random() * W, y: Math.random() * H, l: 8 + Math.random() * 14, v: 4 + Math.random() * 5, a: .15 + Math.random() * .35 }));
+  };
+  resize(); addEventListener("resize", resize);
+  let visible = true;
+  new IntersectionObserver(e => visible = e[0].isIntersecting).observe(cv);
+  (function loop() {
+    if (visible) {
+      cx.clearRect(0, 0, W, H);
+      for (const d of drops) {
+        cx.strokeStyle = `rgba(150,230,255,${d.a})`; cx.lineWidth = 1;
+        cx.beginPath(); cx.moveTo(d.x, d.y); cx.lineTo(d.x - 1.5, d.y + d.l); cx.stroke();
+        d.y += d.v; d.x -= .3;
+        if (d.y > H) { d.y = -d.l; d.x = Math.random() * W; }
+      }
+    }
+    requestAnimationFrame(loop);
+  })();
+}
+
+/* =========================================================
+   Flights
+   ========================================================= */
+function initFlights() {
+  const cmap = { cyan: "var(--cyan)", pink: "var(--pink)", purple: "var(--purple)", yellow: "var(--yellow)" };
+  $("#flightList").innerHTML = T.flights.map(f => `
+    <div class="card glow fl" style="--c:${cmap[f.color] || "var(--cyan)"}">
+      <div class="top"><span>${esc(f.date)}　${esc(f.tag)}</span><span>${esc(f.no)}</span></div>
+      <div class="row">
+        <div><div class="t">${esc(f.fromT)}</div><div class="p">${esc(f.from)}</div></div>
+        <div class="mid"><span>${esc(f.dur)}</span></div>
+        <div class="end"><div class="t">${esc(f.toT)}</div><div class="p">${esc(f.to)}</div></div>
+      </div>
+      ${f.note ? `<div class="nt">▸ ${esc(f.note)}</div>` : ""}
+    </div>`).join("");
+}
+
+/* =========================================================
+   Days
+   ========================================================= */
+const ICONS = {
+  plane: '<path d="M4 22l32-12-8 20-6-7-6 5 1-8z"/><path d="M22 23l14-13"/>',
+  plane2: '<path d="M6 30h28"/><path d="M8 24l6-2 6-8 4 1-3 6 9-3c2-1 4 0 4 1s-1 2-3 3L12 28z"/>',
+  torii: '<path d="M5 9q15-4 30 0"/><path d="M8 15h24"/><path d="M12 10v24M28 10v24"/><path d="M20 10v5"/>',
+  torii2: '<path d="M7 8q13-4 26 0"/><path d="M10 13h20"/><path d="M13 9v17M27 9v17"/><path d="M4 30q4-3 8 0t8 0 8 0 8 0"/><path d="M4 35q4-3 8 0t8 0 8 0 8 0"/>',
+  boat: '<path d="M5 24h30l-5 7H10z"/><path d="M20 24V8l10 12H20"/><path d="M3 35q4-3 8 0t8 0 8 0 8 0"/>',
+  fox: '<path d="M8 6l6 10h12l6-10 2 16-14 12L6 22z"/><circle cx="15" cy="21" r="1.5"/><circle cx="25" cy="21" r="1.5"/><path d="M18 27h4"/>',
+  deer: '<path d="M14 14q-6-4-4-10M14 10l-4 0M26 14q6-4 4-10M26 10h4"/><path d="M13 16q7-4 14 0l-2 14q-5 4-10 0z"/><circle cx="17" cy="21" r="1.2"/><circle cx="23" cy="21" r="1.2"/>',
+  ninja: '<circle cx="20" cy="18" r="12"/><path d="M8 16h24v6H8z"/><path d="M15 19h3M22 19h3"/><path d="M31 15l6-4M31 18l7 0"/><path d="M14 30l-4 6M26 30l4 6"/>',
+  fall: '<path d="M6 8h28"/><path d="M12 8v18M18 8v22M24 8v20M30 8v16"/><path d="M4 33q5-4 10 0t10 0 10 0"/>'
+};
+const MODE_C = { "地鐵": "var(--cyan)", "JR": "var(--green)", "京阪": "var(--purple)", "阪急": "var(--purple)", "阪神": "var(--purple)", "近鐵": "var(--purple)", "叡電": "var(--purple)", "南海": "var(--purple)", "纜車": "var(--yellow)", "公車": "var(--yellow)", "步行": "var(--dim)", "計程車": "var(--orange)", "飛機": "var(--pink)", "船": "var(--cyan)" };
+const HUE = { cyan: "var(--cyan)", pink: "var(--pink)", purple: "var(--purple)", yellow: "var(--yellow)" };
+const NINJA = `<svg viewBox="0 0 64 64" width="52" height="56" xmlns="http://www.w3.org/2000/svg">
+  <defs><filter id="ng" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <g class="bob">
+    <g class="scarf"><path d="M44 21 Q54 18 60 24 Q53 22 50 27 Q48 23 44 24Z" fill="#ff2a6d" filter="url(#ng)"/></g>
+    <line x1="20" y1="34" x2="10" y2="52" stroke="#05d9e8" stroke-width="2" filter="url(#ng)"/>
+    <rect x="22" y="36" width="20" height="18" rx="6" fill="#1a1033" stroke="#b967ff" stroke-width="1.5"/>
+    <path d="M26 54v4M38 54v4" stroke="#b967ff" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="32" cy="23" r="15" fill="#1a1033" stroke="#ff2a6d" stroke-width="1.5" filter="url(#ng)"/>
+    <rect x="18" y="19" width="28" height="9" rx="4.5" fill="#05d9e8" filter="url(#ng)"/>
+    <g class="eyes"><rect x="24" y="21" width="5" height="5" rx="1" fill="#07060f"/><rect x="35" y="21" width="5" height="5" rx="1" fill="#07060f"/></g>
+    <path d="M25 33 L32 30 L39 33" stroke="#ff2a6d" stroke-width="1.5" fill="none"/>
+  </g></svg>`;
+
+let curDay = 0;
+function initDays() {
+  const railIn = $("#railIn");
+  railIn.innerHTML = `<div class="ninja" id="ninja">${NINJA}</div>` + T.days.map((d, i) =>
+    `<button class="dt" data-i="${i}"><span class="d">${esc(d.date)}</span><span class="w">週${esc(d.dow)}</span></button>`).join("");
+  railIn.addEventListener("click", e => { const b = e.target.closest(".dt"); if (b) selectDay(+b.dataset.i, true); });
+  // 旅行中預設選今天
+  const now = new Date(), y = 2027;
+  const idx = T.days.findIndex(d => { const [m, dd] = d.date.split("/").map(Number); const x = new Date(y, m - 1, dd); return x.toDateString() === now.toDateString(); });
+  selectDay(idx >= 0 ? idx : 0, false);
+}
+function selectDay(i, anim) {
+  curDay = i;
+  $$(".dt").forEach((b, j) => b.classList.toggle("on", j === i));
+  const n = $("#ninja");
+  n.style.transform = `translateX(${4 + i * 64 + 6}px)`;
+  if (anim) { n.classList.remove("jump"); void n.offsetWidth; n.classList.add("jump"); }
+  const rail = $("#rail"), target = 4 + i * 64 + 32 - rail.clientWidth / 2;
+  rail.scrollTo({ left: Math.max(0, target), behavior: anim ? "smooth" : "auto" });
+  renderDay(T.days[i]);
+}
+function renderDay(d) {
+  const c = HUE[d.hue] || "var(--cyan)";
+  const items = d.items.map((it, k) => {
+    const tbd = it.tbd ? '<span class="tbdl">待定</span>' : "";
+    const pp = it.people ? `<span class="pp">${esc(it.people)}</span>` : "";
+    const close = it.close ? `<div class="close">${esc(it.close)}</div>` : "";
+    const note = it.note ? `<div class="sub">${esc(it.note)}</div>` : "";
+    let body;
+    if (it.type === "move") {
+      body = `<div class="mv">${it.mode ? `<span class="tag" style="--tc:${MODE_C[it.mode] || "var(--cyan)"}">${esc(it.mode)}</span>` : ""}${tbd}${esc(it.text)}</div>${note}${close}`;
+    } else if (it.type === "note") {
+      body = `<div class="mv notep">${tbd}${esc(it.text)}</div>${note}${close}`;
+    } else {
+      const inner = `${it.map ? '<span class="m">MAP ↗</span>' : ""}<div class="n">${tbd}${esc(it.text)}${pp}</div>${note}${close}`;
+      body = it.map ? `<a class="spot" href="${mapUrl(it.map)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="spot">${inner}</div>`;
+    }
+    return `<div class="it t-${it.type}${it.tbd ? " tbd" : ""}" style="animation-delay:${k * 40}ms"><span class="tm">${esc(it.t)}</span>${body}</div>`;
+  }).join("");
+  $("#dayView").innerHTML = `
+    <div class="card glow dcard" style="--c:${c}">
+      <div class="art"><svg viewBox="0 0 40 40" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[d.icon] || ICONS.torii}</svg></div>
+      <div><div class="k">DAY ${T.days.indexOf(d) + 1} · ${esc(d.date)} 週${esc(d.dow)}</div><h3>${esc(d.title)}</h3>
+      <div class="s">住 ${esc(d.stay)}<span class="pp">${esc(d.people)}</span></div></div>
+    </div>
+    <div class="tl">${items}</div>`;
+}
+
+/* =========================================================
+   Prep
+   ========================================================= */
+function initPrep() {
+  const checks = store.get("checks", {});
+  const box = (el, title, list) => {
+    const done = list.filter(x => checks[x.id]).length;
+    el.innerHTML = `<h4>${title}<span class="prog">${done}/${list.length}</span></h4>` + list.map(x =>
+      `<label><input type="checkbox" data-id="${esc(x.id)}" ${checks[x.id] ? "checked" : ""}><span>${esc(x.text)}</span></label>`).join("");
+  };
+  const render = () => { box($("#todoBox"), "待辦清單", T.todo); box($("#shopBox"), "待買清單", T.shopping); };
+  render();
+  $("#prep").addEventListener("change", e => {
+    if (e.target.dataset.id) { checks[e.target.dataset.id] = e.target.checked; store.set("checks", checks); render(); }
+  });
+  $("#stayList").innerHTML = T.stays.map(s => `
+    <div class="card glow stay" style="--c:var(--purple)">
+      <span class="dd">${esc(s.date)}</span><h4>${esc(s.name)}</h4>
+      <p>📍 ${esc(s.addr)}</p><p>🚉 ${esc(s.station)}</p><p>🕒 ${esc(s.time)}</p>${s.extra ? `<p>⚠ ${esc(s.extra)}</p>` : ""}
+      <div class="mt"><a class="btn sm" href="${mapUrl(s.map)}" target="_blank" rel="noopener">開啟地圖 ↗</a></div>
+    </div>`).join("");
+}
+
+/* =========================================================
+   Money
+   ========================================================= */
+const CATS = [["餐飲", "🍜"], ["交通", "🚃"], ["門票", "🎫"], ["購物", "🛍"], ["住宿", "🏨"], ["其他", "✦"]];
+const catIcon = c => (CATS.find(x => x[0] === c) || CATS[5])[1];
+const M = {
+  me: store.get("me", ""),
+  key: store.get("key", ""),
+  rate: store.get("rate", 0.21),          // 1 JPY = ? TWD
+  budget: store.get("budget", 0),         // TWD
+  personal: store.get("personal", []),
+  cache: store.get("cache", { members: [], records: [] }),
+  pending: store.get("pending", []),
+  tab: "add",
+  form: { kind: "p", cur: "JPY", cat: "餐飲", split: [], mode: "eq" },
+  online: null
+};
+const remote = !!T.SHEET_URL;
+
+// ---- 後端：Google 試算表；沒設定網址時用本機測試模式 ----
+const api = remote ? {
+  async list() {
+    const r = await fetch(`${T.SHEET_URL}?action=list&key=${encodeURIComponent(M.key)}`);
+    return r.json();
+  },
+  async post(body) {
+    const r = await fetch(T.SHEET_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ ...body, key: M.key }) });
+    return r.json();
+  }
+} : {
+  db() { return store.get("demo", { members: [], records: [] }); },
+  save(d) { store.set("demo", d); },
+  async list() { return { ok: true, ...this.db() }; },
+  async post(b) {
+    const d = this.db();
+    if (b.action === "join") { const ex = d.members.includes(b.name); if (!ex) d.members.push(b.name); this.save(d); return { ok: true, exists: ex }; }
+    if (b.action === "add") { if (!d.records.some(r => r.id === b.rec.id)) d.records.push(b.rec); this.save(d); return { ok: true }; }
+    if (b.action === "delete") { d.records = d.records.filter(r => !(r.id === b.id && r.createdBy === b.by)); this.save(d); return { ok: true }; }
+    if (b.action === "rename") {
+      if (d.members.includes(b.to)) return { ok: false, error: "這個名字已經有人用了" };
+      d.members = d.members.map(m => m === b.from ? b.to : m);
+      d.records.forEach(r => { if (r.payer === b.from) r.payer = b.to; if (r.createdBy === b.from) r.createdBy = b.to; if (b.from in r.split) { r.split[b.to] = r.split[b.from]; delete r.split[b.from]; } });
+      this.save(d); return { ok: true };
+    }
+    return { ok: false, error: "unknown" };
+  }
+};
+
+const fmtJ = n => "¥" + Math.round(n).toLocaleString();
+const fmtT = n => "NT$" + Math.round(n).toLocaleString();
+const toJ = (a, c) => c === "JPY" ? a : a / M.rate;
+const toT = (a, c) => c === "TWD" ? a : a * M.rate;
+const fmtOrig = (a, c) => c === "JPY" ? fmtJ(a) : "NT$" + (+a).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const shortDate = s => { const [, m, d] = s.split("-"); return `${+m}/${+d}`; };
+
+function splitEqual(amount, names, cur) {
+  const unit = cur === "JPY" ? 1 : 0.01, total = Math.round(amount / unit), n = names.length;
+  const base = Math.floor(total / n), rem = total - base * n, out = {};
+  names.forEach((nm, i) => out[nm] = +((base + (i < rem ? 1 : 0)) * unit).toFixed(2));
+  return out;
+}
+
+// 目前看得到的分帳資料（伺服器快取＋還沒上傳的）
+function sharedView() {
+  const del = new Set(M.pending.filter(p => p.action === "delete").map(p => p.id));
+  const recs = M.cache.records.filter(r => !del.has(r.id)).map(r => ({ ...r }));
+  M.pending.filter(p => p.action === "add").forEach(p => { if (!recs.some(r => r.id === p.rec.id)) recs.push({ ...p.rec, _pending: true }); });
+  const members = [...M.cache.members];
+  if (M.me && !members.includes(M.me)) members.push(M.me);
+  return { members, records: recs };
+}
+
+async function sync(quiet) {
+  if (remote && !M.key) return;
+  try {
+    // 先上傳離線時記的
+    while (M.pending.length) {
+      const p = M.pending[0];
+      const r = await api.post(p);
+      if (!r.ok && r.error === "密碼錯誤") throw new Error("密碼錯誤");
+      M.pending.shift(); store.set("pending", M.pending);
+    }
+    const data = await api.list();
+    if (!data.ok) throw new Error(data.error || "讀取失敗");
+    M.cache = { members: data.members || [], records: data.records || [] };
+    store.set("cache", M.cache);
+    M.online = true;
+    if (!quiet) toast("已同步");
+  } catch (e) {
+    M.online = false;
+    if (e.message === "密碼錯誤") { M.key = ""; store.set("key", ""); toast("團體密碼錯誤，請重新輸入"); }
+    else if (!quiet) toast("離線中，連上網路後會自動上傳");
+  }
+  renderMoney();
+}
+
+function renderWho() {
+  const w = $("#who");
+  if (!M.me) { w.innerHTML = `<span>還沒加入群組：個人帳可以直接用，分帳要先加入</span>`; return; }
+  w.innerHTML = `<span>我是 <b>${esc(M.me)}</b></span><button class="btn sm dim" id="rename">改名</button>${!remote ? '<span class="pend">單機測試模式</span>' : ""}`;
+}
+
+function joinForm(msg) {
+  return `<div class="card glow" style="--c:var(--yellow)">
+    <div style="font-weight:700;margin-bottom:8px">加入分帳群組</div>
+    <div class="hint" style="margin:0 0 10px">${esc(msg || "輸入你的暱稱，之後其他人分帳時就選得到你。")}</div>
+    <div class="fld"><span>暱稱（最多 12 字）</span><input class="in" id="jName" maxlength="12" value="${esc(M.me)}"></div>
+    ${remote ? `<div class="fld"><span>團體密碼</span><input class="in" id="jKey" type="password" value="${esc(M.key)}"></div>` : `<div class="hint">共用帳本還沒設定，現在是單機測試模式，資料只存在這支手機。</div>`}
+    <button class="btn full yel mt" id="jGo">加入</button>
+  </div>`;
+}
+
+function renderMoney() {
+  renderWho();
+  $$("#mtabs button").forEach(b => b.classList.toggle("on", b.dataset.m === M.tab));
+  const v = $("#mView");
+  if (M.tab === "add") v.innerHTML = viewAdd();
+  else if (M.tab === "mine") v.innerHTML = viewMine();
+  else v.innerHTML = viewGroup();
+}
+
+function viewAdd() {
+  const f = M.form, sv = sharedView();
+  const needJoin = f.kind === "s" && (!M.me || (remote && !M.key));
+  let shared = "";
+  if (f.kind === "s") {
+    if (needJoin) shared = joinForm("要分帳，先加入群組。");
+    else {
+      if (!f.splitTouched) f.split = [...sv.members];
+      if (!f.payer || !sv.members.includes(f.payer)) f.payer = M.me;
+      const amt = parseFloat($("#fAmt")?.value) || 0;
+      const eq = f.split.length ? splitEqual(amt, f.split, f.cur) : {};
+      shared = `
+      <div class="fld"><span>誰付的</span><select class="in" id="fPayer">${sv.members.map(m => `<option ${m === f.payer ? "selected" : ""}>${esc(m)}</option>`).join("")}</select></div>
+      <div class="fld"><span>分給誰（${f.split.length} 人）</span>
+        <div class="chips">${sv.members.map(m => `<button class="chip ${f.split.includes(m) ? "on" : ""}" data-sp="${esc(m)}">${esc(m)}</button>`).join("")}</div>
+        <div class="row2 mt"><button class="btn sm" data-q="all">全選</button><button class="btn sm dim" data-q="none">清除</button></div>
+      </div>
+      <div class="fld"><span>分法</span><div class="chips"><button class="chip ${f.mode === "eq" ? "on" : ""}" data-md="eq">均分</button><button class="chip ${f.mode === "cu" ? "on" : ""}" data-md="cu">自訂金額</button></div>
+        ${f.mode === "eq" ? (f.split.length && amt ? `<div class="hint">每人約 ${fmtOrig(Object.values(eq)[0], f.cur)}</div>` : "") :
+          `<div class="custom">${f.split.map(m => `<span>${esc(m)}</span><input class="in cu" type="number" inputmode="decimal" data-cu="${esc(m)}" value="${f.custom?.[m] ?? ""}" placeholder="0">`).join("")}</div><div class="hint" id="cuSum"></div>`}
+      </div>
+      ${sv.members.length < 2 ? `<div class="hint">目前群組只有你一個人，等其他人加入後就能選他們。</div>` : ""}`;
+    }
+  }
+  return `<div class="card">
+    <div class="tog"><button data-k="p" class="${f.kind === "p" ? "on" : ""}">個人</button><button data-k="s" class="${f.kind === "s" ? "on" : ""}">分帳</button></div>
+    <div class="fld"><span>金額</span><div class="amt"><input class="in" id="fAmt" type="number" inputmode="decimal" placeholder="0" value="${f.amt ?? ""}">
+      <select class="in" id="fCur"><option value="JPY" ${f.cur === "JPY" ? "selected" : ""}>日圓</option><option value="TWD" ${f.cur === "TWD" ? "selected" : ""}>台幣</option></select></div></div>
+    <div class="fld"><span>分類</span><div class="chips">${CATS.map(([c, i]) => `<button class="chip ${f.cat === c ? "on" : ""}" data-cat="${c}">${i} ${c}</button>`).join("")}</div></div>
+    <div class="fld"><span>日期</span><input class="in" id="fDate" type="date" value="${f.date || today()}"></div>
+    <div class="fld"><span>備註</span><input class="in" id="fNote" maxlength="40" placeholder="例如：一蘭拉麵" value="${esc(f.note || "")}"></div>
+    ${shared}
+    ${needJoin ? "" : `<button class="btn full pink mt" id="fSave">記下來</button>`}
+  </div>`;
+}
+
+function mineList() {
+  const sv = sharedView(), list = [];
+  M.personal.forEach(r => list.push({ ...r, kind: "p", mine: r.amount }));
+  if (M.me) sv.records.forEach(r => { if (r.split && M.me in r.split) list.push({ ...r, kind: "s", mine: r.split[M.me] }); });
+  return list.sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+function viewMine() {
+  const list = mineList();
+  const totJ = list.reduce((s, r) => s + toJ(r.mine, r.currency), 0);
+  const totT = totJ * M.rate;
+  const pct = M.budget ? Math.min(100, totT / M.budget * 100) : 0;
+  const byCat = {}; list.forEach(r => byCat[r.category] = (byCat[r.category] || 0) + toJ(r.mine, r.currency));
+  const maxCat = Math.max(1, ...Object.values(byCat));
+  const groups = {}; list.forEach(r => (groups[r.date] = groups[r.date] || []).push(r));
+  return `
+  <div class="card glow">
+    <div class="hint" style="margin:0">我的總花費（含分帳份額）</div>
+    <div class="big">${fmtJ(totJ)}<small>≈ ${fmtT(totT)}</small></div>
+    ${M.budget ? `<div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="hint">預算 ${fmtT(M.budget)}・${totT > M.budget ? `<span class="neg">超支 ${fmtT(totT - M.budget)}</span>` : `剩 ${fmtT(M.budget - totT)}`}</div>` : `<div class="hint">在下方設定預算，就會顯示進度條。</div>`}
+  </div>
+  ${list.length ? `<div class="card"><div style="font-weight:700;margin-bottom:6px">分類統計</div>
+    ${CATS.filter(([c]) => byCat[c]).map(([c, i]) => `<div class="cat"><span>${i} ${c}</span><div class="bar"><i style="width:${byCat[c] / maxCat * 100}%"></i></div><span class="v">${fmtJ(byCat[c])}</span></div>`).join("")}</div>` : ""}
+  <div class="card">
+    ${list.length ? Object.keys(groups).map(d => {
+      const sub = groups[d].reduce((s, r) => s + toJ(r.mine, r.currency), 0);
+      return `<div class="dayh"><span>${d ? shortDate(d) : "—"}</span><span>${fmtJ(sub)}</span></div>` + groups[d].map(r => `
+        <div class="rec"><div class="ci">${catIcon(r.category)}</div>
+          <div class="rt">${r.kind === "s" ? "🔗 " : ""}${esc(r.note || r.category)}${r._pending ? '<span class="pend">待上傳</span>' : ""}
+            <small>${r.kind === "s" ? `分帳・${esc(r.payer)} 付 ${fmtOrig(r.amount, r.currency)}` : "個人"}</small></div>
+          <div class="ra">${fmtOrig(r.mine, r.currency)}<small>${r.currency === "JPY" ? "≈ " + fmtT(toT(r.mine, "JPY")) : "≈ " + fmtJ(toJ(r.mine, "TWD"))}</small></div>
+          ${r.kind === "p" ? `<button class="x" data-delp="${r.id}" aria-label="刪除">✕</button>` : ""}
+        </div>`).join("");
+    }).join("") : `<div class="empty">還沒有任何紀錄，去「記一筆」新增吧</div>`}
+  </div>
+  <div class="card">
+    <div style="font-weight:700;margin-bottom:10px">設定</div>
+    <div class="fld"><span>匯率：1 日圓 = ? 台幣</span><input class="in" id="sRate" type="number" step="0.001" inputmode="decimal" value="${M.rate}"></div>
+    <div class="fld"><span>我的預算（台幣）</span><input class="in" id="sBudget" type="number" inputmode="numeric" value="${M.budget || ""}" placeholder="例如 30000"></div>
+    <div class="row2"><button class="btn sm" id="sSave">儲存設定</button><button class="btn sm yel" id="exJson">備份（JSON）</button><button class="btn sm yel" id="exCsv">匯出 CSV</button><button class="btn sm dim" id="imJson">匯入備份</button></div>
+    <input type="file" id="imFile" accept="application/json" hidden>
+    <div class="hint">個人帳只存在這支手機。換手機或清除瀏覽器資料前，記得先按「備份」。</div>
+  </div>`;
+}
+
+function balances(sv) {
+  const b = {}; sv.members.forEach(m => b[m] = { paid: 0, owe: 0 });
+  sv.records.forEach(r => {
+    const p = b[r.payer] || (b[r.payer] = { paid: 0, owe: 0 });
+    p.paid += toJ(r.amount, r.currency);
+    Object.entries(r.split || {}).forEach(([n, a]) => (b[n] || (b[n] = { paid: 0, owe: 0 })).owe += toJ(a, r.currency));
+  });
+  return b;
+}
+function settle(b) {
+  const cr = [], db = [];
+  Object.entries(b).forEach(([n, x]) => { const net = Math.round(x.paid - x.owe); if (net > 0) cr.push([n, net]); else if (net < 0) db.push([n, -net]); });
+  cr.sort((a, c) => c[1] - a[1]); db.sort((a, c) => c[1] - a[1]);
+  const out = []; let i = 0, j = 0;
+  while (i < db.length && j < cr.length) {
+    const amt = Math.min(db[i][1], cr[j][1]);
+    if (amt > 0) out.push([db[i][0], cr[j][0], amt]);
+    db[i][1] -= amt; cr[j][1] -= amt;
+    if (db[i][1] <= 0) i++; if (cr[j][1] <= 0) j++;
+  }
+  return out;
+}
+
+function viewGroup() {
+  if (!M.me || (remote && !M.key)) return joinForm();
+  const sv = sharedView(), b = balances(sv), st = settle(b);
+  const pend = M.pending.length;
+  const status = !remote ? `<span class="dot warn"></span>單機測試模式（共用帳本還沒設定）`
+    : M.online === false ? `<span class="dot warn"></span>離線中${pend ? `，${pend} 筆待上傳` : ""}`
+    : `<span class="dot ok"></span>已連線${pend ? `，${pend} 筆待上傳` : ""}`;
+  const recs = [...sv.records].sort((a, c) => (c.date || "").localeCompare(a.date || "") || (c.createdAt || 0) - (a.createdAt || 0));
+  return `
+  <div class="status">${status}<button class="btn sm" id="gSync" style="margin-left:auto">重新整理</button></div>
+  <div class="card"><div style="font-weight:700;margin-bottom:6px">成員（${sv.members.length}）</div>
+    <div class="chips">${sv.members.map(m => `<span class="chip ${m === M.me ? "on" : ""}">${esc(m)}</span>`).join("")}</div></div>
+  <div class="card glow" style="--c:var(--green)">
+    <div style="font-weight:700;margin-bottom:6px">結算建議</div>
+    ${st.length ? st.map(([f, t, a]) => `<div class="settle"><span>${esc(f)}</span><span>→</span><span>${esc(t)}</span><b style="margin-left:auto">${fmtJ(a)}</b><small class="hint" style="margin:0">≈ ${fmtT(a * M.rate)}</small></div>`).join("") : `<div class="empty">目前大家都不欠錢 👍</div>`}
+    <div class="hint">用最少的轉帳次數算出來的。台幣金額照你設定的匯率換算。</div>
+  </div>
+  <div class="card">
+    <div class="bal h"><span>成員</span><span>先墊</span><span>應分攤</span><span>差額</span></div>
+    ${Object.entries(b).map(([n, x]) => { const net = x.paid - x.owe; return `<div class="bal"><span>${esc(n)}</span><span>${fmtJ(x.paid)}</span><span>${fmtJ(x.owe)}</span><span class="${net > 0.5 ? "pos" : net < -0.5 ? "neg" : ""}">${net > 0 ? "+" : ""}${fmtJ(net)}</span></div>`; }).join("")}
+    <div class="hint">差額＋代表別人要還你，−代表你要還別人。</div>
+  </div>
+  <div class="card"><div style="font-weight:700;margin-bottom:4px">所有分帳紀錄</div>
+    ${recs.length ? recs.map(r => `<div class="rec"><div class="ci">${catIcon(r.category)}</div>
+      <div class="rt">${esc(r.note || r.category)}${r._pending ? '<span class="pend">待上傳</span>' : ""}
+        <small>${r.date ? shortDate(r.date) : ""}・${esc(r.payer)} 付・分 ${Object.keys(r.split || {}).length} 人・${esc(r.createdBy)} 記</small></div>
+      <div class="ra">${fmtOrig(r.amount, r.currency)}</div>
+      ${r.createdBy === M.me ? `<button class="x" data-dels="${r.id}" aria-label="刪除">✕</button>` : ""}</div>`).join("") : `<div class="empty">還沒有分帳紀錄</div>`}
+  </div>`;
+}
+
+function readForm() {
+  const f = M.form;
+  if ($("#fAmt")) f.amt = $("#fAmt").value;
+  if ($("#fCur")) f.cur = $("#fCur").value;
+  if ($("#fDate")) f.date = $("#fDate").value;
+  if ($("#fNote")) f.note = $("#fNote").value;
+  if ($("#fPayer")) f.payer = $("#fPayer").value;
+  $$(".cu").forEach(i => { f.custom = f.custom || {}; f.custom[i.dataset.cu] = i.value; });
+}
+
+async function saveRecord() {
+  readForm();
+  const f = M.form, amount = parseFloat(f.amt);
+  if (!(amount > 0)) return toast("請輸入金額");
+  const base = { id: uid(), date: f.date || today(), amount, currency: f.cur, category: f.cat, note: (f.note || "").trim(), createdAt: Date.now() };
+  if (f.kind === "p") {
+    M.personal.push(base); store.set("personal", M.personal);
+    toast("已記到個人帳");
+  } else {
+    if (!f.split.length) return toast("至少要分給一個人");
+    let split;
+    if (f.mode === "eq") split = splitEqual(amount, f.split, f.cur);
+    else {
+      split = {}; let sum = 0;
+      f.split.forEach(m => { const v = parseFloat(f.custom?.[m]) || 0; split[m] = v; sum += v; });
+      if (Math.abs(sum - amount) > (f.cur === "JPY" ? 0.5 : 0.01)) return toast(`自訂金額加總 ${fmtOrig(sum, f.cur)}，跟總額不一樣`);
+    }
+    const rec = { ...base, payer: f.payer || M.me, split, createdBy: M.me };
+    M.pending.push({ action: "add", rec }); store.set("pending", M.pending);
+    toast("已記到分帳");
+    sync(true);
+  }
+  M.form = { kind: f.kind, cur: f.cur, cat: f.cat, split: f.split, splitTouched: f.splitTouched, mode: "eq", payer: f.payer, date: f.date };
+  renderMoney();
+}
+
+async function doJoin() {
+  const name = ($("#jName").value || "").trim();
+  if (!name) return toast("請輸入暱稱");
+  if (remote) { M.key = ($("#jKey").value || "").trim(); if (!M.key) return toast("請輸入團體密碼"); store.set("key", M.key); }
+  try {
+    const r = await api.post({ action: "join", name });
+    if (!r.ok) { if (r.error === "密碼錯誤") { M.key = ""; store.set("key", ""); } return toast(r.error || "加入失敗"); }
+    if (r.exists && name !== M.me && !confirm(`「${name}」已經在群組裡，是你本人嗎？`)) return;
+    M.me = name; store.set("me", name); M.form.splitTouched = false;
+    toast(`歡迎，${name}`);
+    await sync(true);
+  } catch { toast("連不上網路，請稍後再試"); }
+}
+
+async function doRename() {
+  const to = (prompt("新的暱稱（最多 12 字）", M.me) || "").trim().slice(0, 12);
+  if (!to || to === M.me) return;
+  try {
+    const r = await api.post({ action: "rename", from: M.me, to });
+    if (!r.ok) return toast(r.error || "改名失敗");
+    M.me = to; store.set("me", to); M.form.splitTouched = false; toast("已改名"); sync(true);
+  } catch { toast("改名需要網路"); }
+}
+
+function download(name, text, type) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function initMoney() {
+  $("#mtabs").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; readForm(); M.tab = b.dataset.m; renderMoney(); });
+  $("#who").addEventListener("click", e => { if (e.target.id === "rename") doRename(); });
+  const v = $("#mView");
+  v.addEventListener("click", e => {
+    const t = e.target.closest("button"); if (!t) return;
+    const f = M.form;
+    if (t.dataset.k) { readForm(); f.kind = t.dataset.k; renderMoney(); }
+    else if (t.dataset.cat) { readForm(); f.cat = t.dataset.cat; renderMoney(); }
+    else if (t.dataset.sp) { readForm(); const n = t.dataset.sp; f.split = f.split.includes(n) ? f.split.filter(x => x !== n) : [...f.split, n]; f.splitTouched = true; renderMoney(); }
+    else if (t.dataset.q) { readForm(); f.split = t.dataset.q === "all" ? [...sharedView().members] : []; f.splitTouched = t.dataset.q !== "all"; renderMoney(); }
+    else if (t.dataset.md) { readForm(); f.mode = t.dataset.md; renderMoney(); }
+    else if (t.id === "fSave") saveRecord();
+    else if (t.id === "jGo") doJoin();
+    else if (t.id === "gSync") sync(false);
+    else if (t.dataset.delp) { if (confirm("刪除這筆個人紀錄？")) { M.personal = M.personal.filter(r => r.id !== t.dataset.delp); store.set("personal", M.personal); renderMoney(); } }
+    else if (t.dataset.dels) { if (confirm("刪除這筆分帳？所有人都會看不到。")) { const id = t.dataset.dels; if (M.pending.some(p => p.action === "add" && p.rec.id === id)) M.pending = M.pending.filter(p => !(p.action === "add" && p.rec.id === id)); else M.pending.push({ action: "delete", id, by: M.me }); store.set("pending", M.pending); renderMoney(); sync(true); } }
+    else if (t.id === "sSave") {
+      const r = parseFloat($("#sRate").value), bgt = parseFloat($("#sBudget").value) || 0;
+      if (r > 0) { M.rate = r; store.set("rate", r); }
+      M.budget = bgt; store.set("budget", bgt); toast("設定已儲存"); renderMoney();
+    }
+    else if (t.id === "exJson") download(`japan-trip-ledger-${today()}.json`, JSON.stringify({ app: "kansai2027", personal: M.personal, rate: M.rate, budget: M.budget, me: M.me }, null, 2), "application/json");
+    else if (t.id === "exCsv") {
+      const rows = [["日期", "類型", "分類", "備註", "我的金額", "幣別", "約台幣"]];
+      mineList().forEach(r => rows.push([r.date, r.kind === "s" ? "分帳" : "個人", r.category, r.note || "", r.mine, r.currency, Math.round(toT(r.mine, r.currency))]));
+      download(`japan-trip-ledger-${today()}.csv`, "﻿" + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n"), "text/csv");
+    }
+    else if (t.id === "imJson") $("#imFile").click();
+  });
+  v.addEventListener("change", async e => {
+    if (e.target.id === "imFile" && e.target.files[0]) {
+      try {
+        const d = JSON.parse(await e.target.files[0].text());
+        const ids = new Set(M.personal.map(r => r.id)); let n = 0;
+        (d.personal || []).forEach(r => { if (!ids.has(r.id)) { M.personal.push(r); n++; } });
+        store.set("personal", M.personal); toast(`匯入 ${n} 筆`); renderMoney();
+      } catch { toast("檔案格式不對"); }
+    }
+    if (e.target.id === "fCur" || e.target.id === "fPayer") { readForm(); renderMoney(); }
+  });
+  v.addEventListener("input", e => {
+    if (e.target.id === "fAmt" && M.form.kind === "s" && M.form.mode === "eq") {
+      const f = M.form, amt = parseFloat(e.target.value) || 0;
+      const names = f.split;
+      const chipsHint = $$(".fld", v).find(x => x.textContent.startsWith("分法"));
+      if (chipsHint) { let hh = chipsHint.querySelector(".hint"); if (!hh) { hh = document.createElement("div"); hh.className = "hint"; chipsHint.appendChild(hh); } hh.textContent = names.length && amt ? `每人約 ${fmtOrig(Object.values(splitEqual(amt, names, f.cur))[0], f.cur)}` : ""; }
+    }
+    if (e.target.classList.contains("cu")) {
+      const f = M.form; let sum = 0; $$(".cu", v).forEach(i => sum += parseFloat(i.value) || 0);
+      const amt = parseFloat($("#fAmt").value) || 0, el = $("#cuSum");
+      if (el) el.textContent = `加總 ${fmtOrig(sum, f.cur)} ／ 總額 ${fmtOrig(amt, f.cur)}${Math.abs(sum - amt) > (f.cur === "JPY" ? .5 : .01) ? "（還差 " + fmtOrig(amt - sum, f.cur) + "）" : " ✓"}`;
+    }
+  });
+  addEventListener("online", () => sync(true));
+  renderMoney();
+  if (M.me) sync(true);
+}
+
+/* =========================================================
+   Nav highlight
+   ========================================================= */
+function initNav() {
+  const links = $$("#nav a"), secs = links.map(a => document.getElementById(a.dataset.s));
+  const set = id => links.forEach(a => a.classList.toggle("on", a.dataset.s === id));
+  const onScroll = () => {
+    let cur = null;
+    secs.forEach(s => { if (s.getBoundingClientRect().top < innerHeight * 0.5) cur = s.id; });
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) cur = secs[secs.length - 1].id;
+    set(cur);
+  };
+  addEventListener("scroll", onScroll, { passive: true }); onScroll();
+}
+
+initHero(); initFlights(); initDays(); initPrep(); initMoney(); initNav();
+$("#foot").innerHTML = `LAST UPDATE ${esc(T.updated)}<br>行程是草稿，隨時會改`;
+})();
