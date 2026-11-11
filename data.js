@@ -14,7 +14,7 @@ window.TRIP = {
   updated: "2026-11-11",
 
   // 共用帳本：Google Apps Script 部署後的網址（設定步驟見 README）
-  SHEET_URL: "",
+  SHEET_URL: "https://script.google.com/macros/s/AKfycbwOpjTe9wPVYV4QP1Sl7c1Rf0TN4n66Gn96t36PQorv4yIU3pHELckhgYSiupUTiuOdvA/exec",
 
   // 首頁背景圖：Gemini 畫好後放到 images/ 資料夾，填檔名，例如 "images/hero.jpg"
   HERO_IMAGE: "images/hero.jpg",
