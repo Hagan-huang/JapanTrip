@@ -21,7 +21,7 @@ window.TRIP = {
   // 封面圖（直式，手機全螢幕）；沒填就用 HERO_IMAGE
   COVER_IMAGE: "images/cover.jpg",
   // 各分頁上方橫幅圖（3:1 橫圖）；沒填就從封面裁一塊
-  BANNERS: { flights: "images/banner-flights.jpg", days: "images/banner-days.jpg", prep: "images/banner-prep.jpg", money: "images/banner-money.jpg" },
+  BANNERS: { home: "", flights: "images/banner-flights.jpg", days: "images/banner-days.jpg", prep: "images/banner-prep.jpg", money: "images/banner-money.jpg" },
   // 橫幅圖要對準哪裡（水平% 垂直%）
   BANNER_POS: { flights: "62% 42%", days: "68% 55%", prep: "72% 62%", money: "78% 45%" },
   // 底部按鈕圖示：Gemini 畫好後放 images/，例如 flights: "images/tab-flights.png"

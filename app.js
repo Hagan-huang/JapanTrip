@@ -901,8 +901,10 @@ async function doJoin(root) {
     if (remote && !("data" in r)) toast("登入了，但 Apps Script 還是舊版，個人資料還不會同步，請照步驟更新");
     else if (r.data) { Acct.apply(Acct.merge(r.data, true)); Acct.push(); toast(`歡迎回來，${name}`); }
     else { Acct.push(); toast(r.exists ? `登入成功，${name}` : `帳號建立好了，${name}`); }
+    window.__afterLogin && window.__afterLogin();
     await sync(true);
     loadItin();
+    if (window.__ready) renderHome();
   } catch (e) { done(); toast(e && e.name === "AbortError" ? "Google 回應太久，請再按一次" : "連不上共用帳本，請確認網路或 Apps Script 有沒有部署好"); }
 }
 
@@ -1052,11 +1054,145 @@ async function seedItin() {
 }
 
 /* =========================================================
+   主頁：日期、今日行程、下一站、天氣、匯率、進度、花費
+   ========================================================= */
+const WX = { 0: ["☀️", "晴"], 1: ["🌤", "晴時多雲"], 2: ["⛅", "多雲"], 3: ["☁️", "陰"], 45: ["🌫", "霧"], 48: ["🌫", "霧"], 51: ["🌦", "毛毛雨"], 53: ["🌦", "毛毛雨"], 55: ["🌦", "毛毛雨"], 56: ["🌧", "凍雨"], 57: ["🌧", "凍雨"], 61: ["🌧", "小雨"], 63: ["🌧", "雨"], 65: ["🌧", "大雨"], 66: ["🌧", "凍雨"], 67: ["🌧", "凍雨"], 71: ["🌨", "小雪"], 73: ["🌨", "雪"], 75: ["❄️", "大雪"], 77: ["🌨", "雪"], 80: ["🌦", "陣雨"], 81: ["🌧", "陣雨"], 82: ["⛈", "大陣雨"], 85: ["🌨", "陣雪"], 86: ["❄️", "大陣雪"], 95: ["⛈", "雷雨"], 96: ["⛈", "雷雨"], 99: ["⛈", "雷雨"] };
+const wx = c => WX[c] || ["🌡", "—"];
+const CITIES = [{ k: "kyoto", name: "京都", lat: 35.0116, lon: 135.7681 }, { k: "osaka", name: "大阪", lat: 34.6937, lon: 135.5023 }];
+const jstNow = () => new Date(Date.now() + 9 * 36e5); // 用 getUTC* 讀出日本時間
+const toMin = t => /^\d{1,2}:\d{2}$/.test(t) ? +t.split(":")[0] * 60 + +t.split(":")[1] : null;
+const fmtDur = m => m >= 1440 ? `${Math.floor(m / 1440)} 天 ${Math.floor(m % 1440 / 60)} 時` : m >= 60 ? `${Math.floor(m / 60)} 小時 ${m % 60} 分` : `${m} 分`;
+let homeTimer = 0, homeFetched = false;
+
+async function fetchWeather() {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${CITIES.map(c => c.lat).join(",")}&longitude=${CITIES.map(c => c.lon).join(",")}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FTokyo&forecast_days=16`;
+  const r = await (await fetchT(url, {}, 12000)).json();
+  const arr = Array.isArray(r) ? r : [r];
+  const out = {}; CITIES.forEach((c, i) => out[c.k] = arr[i]);
+  out.at = Date.now(); store.set("wx", out); return out;
+}
+async function fetchRate() {
+  const r = await (await fetchT("https://open.er-api.com/v6/latest/JPY", {}, 12000)).json();
+  if (r.result !== "success" || !r.rates || !r.rates.TWD) throw new Error("rate");
+  const out = { twd: r.rates.TWD, at: r.time_last_update_unix * 1000 }; store.set("fx", out); return out;
+}
+function myGroupDays() {
+  const now = jstNow(), y = now.getUTCFullYear(), today = `${now.getUTCMonth() + 1}/${now.getUTCDate()}`;
+  const idx = y === 2027 ? T.days.findIndex(d => d.date === today) : -1;
+  const before = Date.now() < new Date(T.departAt).getTime() && idx < 0;
+  const grp = group === "all" ? null : T.groups.find(g => g.id === group);
+  return { idx, before, after: !before && idx < 0, first: grp ? grp.arrive : 0 };
+}
+function homeToday() {
+  const { idx, before, after, first } = myGroupDays();
+  const mineF = T.flights.find(f => f.id === flightOf()[M.me]) || T.flights.find(f => f.g === group && !f.ret);
+  if (before) {
+    // 出發前：下一站是自己的航班
+    const d = T.days[first];
+    let next = "";
+    if (mineF) {
+      const leg = mineF.legs[0], mins = Math.round((new Date(leg.dep) - Date.now()) / 6e4);
+      next = `<div class="next"><div class="nt"><b>✈ ${esc(leg.no || leg.airline)} ${esc(AP[leg.from].name)} → ${esc(AP[mineF.legs[mineF.legs.length - 1].to].name)}</b><small>${esc(mineF.date)} ${localT(leg.dep, leg.from)} 起飛${flightOf()[M.me] ? "" : "・（還沒登記航班，先用你組別的班次）"}</small></div><div class="cd">${fmtDur(mins)}<small>後起飛</small></div></div>`;
+    } else next = `<div class="next"><div class="nt"><b>還沒登記航班</b><small>到航班頁點你搭的那班</small></div><button class="btn sm yel" data-go="flights">去登記 ▸</button></div>`;
+    const items = visibleItems(d).slice(0, 4);
+    return `<div class="card glow hc" style="--c:var(--pink)"><h4>⏭ 下一站</h4>${next}</div>
+      <div class="card hc"><h4>📅 第一天預覽・${esc(d.date)} 週${esc(d.dow)}・${esc(d.title)}</h4>
+      <div class="mini-tl">${items.map(it => `<div><span>${esc(it.t)}</span>${esc(it.text)}</div>`).join("")}${visibleItems(d).length > 4 ? `<div><span></span><a href="#" data-go="days">看完整行程 ▸</a></div>` : ""}</div></div>`;
+  }
+  if (after) return `<div class="card hc"><h4>🎌 旅程結束</h4><div>辛苦了！記得到記帳頁看結算建議。</div></div>`;
+  // 旅行中：今天的行程＋下一站
+  const d = T.days[idx], items = visibleItems(d), now = jstNow(), nm = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const timed = items.filter(it => toMin(it.t) != null).sort((a, b) => toMin(a.t) - toMin(b.t));
+  const nxt = timed.find(it => toMin(it.t) >= nm), cur = [...timed].reverse().find(it => toMin(it.t) < nm);
+  const nav = it => it && it.map ? `<a class="btn sm pink" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&travelmode=transit&destination=${encodeURIComponent(it.map)}">導航 ↗</a>` : "";
+  const next = nxt ? `<div class="next"><div class="nt"><b>${esc(nxt.text)}</b><small>${esc(nxt.t)}${nxt.note ? "・" + esc(nxt.note) : ""}</small></div><div class="cd">${fmtDur(toMin(nxt.t) - nm)}<small>後</small></div></div><div class="row2 mt">${nav(nxt)}</div>`
+    : `<div>今天的行程都走完了，好好休息 🌙</div>`;
+  return `<div class="card glow hc" style="--c:var(--pink)"><h4>⏭ 下一站${cur ? `・現在：${esc(cur.text)}` : ""}</h4>${next}</div>
+    <div class="card hc"><h4>📅 今日行程・${esc(d.title)}</h4><div class="mini-tl">${items.map(it => { const m = toMin(it.t); const cls = m != null && m < nm && it !== cur ? "past" : it === cur ? "now" : ""; return `<div class="${cls}"><span>${esc(it.t)}</span>${esc(it.text)}</div>`; }).join("")}</div></div>`;
+}
+function homeWeather() {
+  const w = store.get("wx", null);
+  if (!w || !w.kyoto) return `<div class="card hc"><h4>🌤 天氣</h4><div class="hint">讀取中…</div></div>`;
+  const city = c => { const d = w[c.k]; if (!d || !d.current) return ""; const [ic, tx] = wx(d.current.weather_code);
+    return `<div class="card hc"><h4>${c.name}</h4><div class="wx"><span class="ic">${ic}</span><div><span class="tp">${Math.round(d.current.temperature_2m)}°</span><small>${tx}・${Math.round(d.daily.temperature_2m_min[0])}°/${Math.round(d.daily.temperature_2m_max[0])}°</small></div></div>
+    <div class="wxd">${d.daily.time.slice(1, 4).map((t, i) => `<div>${+t.slice(5, 7)}/${+t.slice(8)}<b>${wx(d.daily.weather_code[i + 1])[0]}</b><i>${Math.round(d.daily.temperature_2m_max[i + 1])}°</i></div>`).join("")}</div></div>`; };
+  // 旅行日期進入預報範圍後，顯示旅行那幾天的預報（1/13–15 京都、1/16 後大阪）
+  const trip = [];
+  T.days.forEach((dd, i) => { const iso = `2027-${dd.date.split("/").map(x => x.padStart(2, "0")).join("-")}`, c = i < 3 ? "kyoto" : "osaka", d = w[c]; const k = d && d.daily ? d.daily.time.indexOf(iso) : -1; if (k >= 0) trip.push({ dd, c, d, k }); });
+  return `<div class="hrow">${CITIES.map(city).join("")}</div>
+    ${trip.length ? `<div class="card hc"><h4>🧳 旅行期間預報</h4><div class="wxd">${trip.map(x => `<div>${x.dd.date}<b>${wx(x.d.daily.weather_code[x.k])[0]}</b><i>${Math.round(x.d.daily.temperature_2m_min[x.k])}–${Math.round(x.d.daily.temperature_2m_max[x.k])}°</i><br>☂${x.d.daily.precipitation_probability_max[x.k] ?? "–"}%</div>`).join("")}</div></div>` : ""}
+    <div class="hint" style="margin-top:-4px">天氣來源 Open-Meteo・${new Date(w.at).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })} 更新</div>`;
+}
+function homeRate() {
+  const fx = store.get("fx", null);
+  if (!fx) return `<div class="card hc"><h4>💱 匯率</h4><div class="hint">讀取中…</div></div>`;
+  return `<div class="card hc fx-rate"><h4>💱 日圓匯率</h4>
+    <div class="big">${fx.twd.toFixed(4)}<small>台幣 / 1 日圓</small></div>
+    <div class="conv"><input class="in" id="convIn" type="number" inputmode="decimal" placeholder="輸入日圓" value="${store.get("convJ", 10000)}"><span id="convOut">≈ ${fmtT((store.get("convJ", 10000) || 0) * fx.twd)}</span></div>
+    <div class="row2 mt"><button class="btn sm" id="useRate">套用到記帳匯率${Math.abs(M.rate - fx.twd) < 0.0005 ? " ✓" : ""}</button></div>
+    <div class="hint">市場匯率，跟銀行換匯價會差一點・${new Date(fx.at).toLocaleDateString("zh-TW")} 更新</div></div>`;
+}
+function homeProgress() {
+  const all = [...LISTS.todo, ...LISTS.shopping], done = all.filter(x => CHECKS[x.id]).length;
+  const mf = T.flights.find(f => f.id === flightOf()[M.me]);
+  const list = mineList(), tot = list.reduce((a, r) => a + toJ(r.mine, r.currency), 0);
+  const now = jstNow(), td = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+  const today = list.filter(r => r.date === td).reduce((a, r) => a + toJ(r.mine, r.currency), 0);
+  return `<div class="hrow">
+    <div class="card hc"><h4>✅ 出發前進度</h4>
+      <div class="kv"><span>待辦＋待買</span><b>${done}/${all.length}</b></div>
+      <div class="bar" style="margin:4px 0 6px"><i style="width:${all.length ? done / all.length * 100 : 0}%"></i></div>
+      <div class="kv"><span>我的航班</span><b>${mf ? esc(mf.date + " " + (mf.legs[0].no || "")) : `<a href="#" data-go="flights">未登記</a>`}</b></div></div>
+    <div class="card hc"><h4>💰 我的花費</h4>
+      <div class="kv"><span>今天</span><b>${fmtJ(today)}</b></div>
+      <div class="kv"><span>全部</span><b>${fmtJ(tot)}</b></div>
+      ${M.budget ? `<div class="bar" style="margin-top:6px"><i style="width:${Math.min(100, tot * M.rate / M.budget * 100)}%"></i></div><div class="hint">預算剩 ${fmtT(Math.max(0, M.budget - tot * M.rate))}</div>` : `<div class="hint"><a href="#" data-go="money">設定預算 ▸</a></div>`}</div>
+  </div>`;
+}
+function renderHome() {
+  const v = $("#homeView"); if (!v) return;
+  const now = jstNow(), tw = new Date(Date.now() + 8 * 36e5);
+  const W = "日一二三四五六";
+  const days = Math.ceil((new Date(T.departAt) - Date.now()) / 864e5);
+  const { idx } = myGroupDays();
+  v.innerHTML = `<div class="hgrid">
+    <div class="card glow hc"><div class="hdate"><div><div class="dd">${tw.getUTCMonth() + 1}/${tw.getUTCDate()}</div><div class="dw">週${W[tw.getUTCDay()]}・${String(tw.getUTCHours()).padStart(2, "0")}:${String(tw.getUTCMinutes()).padStart(2, "0")} 台灣</div></div>
+      <div class="ds">${idx >= 0 ? `旅行第<b>DAY ${idx + 1}</b>` : days > 0 ? `出發倒數<b>${days} 天</b>` : `旅程<b>完成</b>`}<span>日本 ${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}</span></div></div></div>
+    ${homeToday()}
+    ${homeWeather()}
+    ${homeRate()}
+    ${homeProgress()}
+  </div>`;
+  if (!homeFetched) {
+    homeFetched = true;
+    const w = store.get("wx", null), fx = store.get("fx", null);
+    if (!w || Date.now() - w.at > 30 * 6e4) fetchWeather().then(renderHome).catch(() => {});
+    if (!fx || Date.now() - fx.at > 6 * 36e5) fetchRate().then(renderHome).catch(() => {});
+  }
+  clearTimeout(homeTimer);
+  homeTimer = setTimeout(() => { if ($("#home").classList.contains("on")) renderHome(); }, 60000);
+}
+function initHome() {
+  const v = $("#homeView");
+  v.addEventListener("click", e => {
+    const g = e.target.closest("[data-go]"); if (g) { e.preventDefault(); $(`#tabbar [data-tab="${g.dataset.go}"]`).click(); return; }
+    if (e.target.id === "useRate") { const fx = store.get("fx", null); if (fx) { M.rate = +fx.twd.toFixed(4); store.set("rate", M.rate); toast("記帳匯率已更新"); renderHome(); } }
+  });
+  v.addEventListener("input", e => {
+    if (e.target.id !== "convIn") return;
+    const fx = store.get("fx", null), j = parseFloat(e.target.value) || 0; store.set("convJ", j);
+    if (fx) $("#convOut").textContent = "≈ " + fmtT(j * fx.twd);
+  });
+}
+
+/* =========================================================
    Banner status
    ========================================================= */
 function updateBanners() {
   const set = (k, html) => { const el = $(`[data-bs="${k}"]`); if (el) el.innerHTML = html; };
   const out = T.flights.filter(f => !f.ret).length;
+  const dd = Math.ceil((new Date(T.departAt) - Date.now()) / 864e5);
+  set("home", `${typeof M !== "undefined" && M.me ? esc(M.me) + "・" : ""}${dd > 0 ? `出發倒數 <b>${dd}</b> 天` : "旅行中"}`);
   set("flights", `去程 <b>${out}</b> 班・回程 <b>${T.flights.length - out}</b> 班・點卡片看飛行過程`);
   const g = group === "all" ? "全部組別" : T.groups.find(x => x.id === group).name, d = T.days[curDay];
   set("days", `${esc(g)}・<b>${esc(d.date)}</b> 週${esc(d.dow)}・DAY ${curDay + 1}/${T.days.length}`);
@@ -1072,20 +1208,22 @@ function updateBanners() {
    Cover & tabs
    ========================================================= */
 const TAB_SVG = {
+  home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
   flights: '<path d="M3 13l18-7-4 13-4-4-4 3 1-5z"/><path d="M13 15l8-9"/>',
   days: '<path d="M3 6q9-3 18 0"/><path d="M5 10h14"/><path d="M7 7v14M17 7v14"/><path d="M12 7v3"/>',
   prep: '<rect x="5" y="7" width="14" height="14" rx="3"/><path d="M9 7V5a3 3 0 016 0v2"/><path d="M9 13l2 2 4-4"/>',
   money: '<circle cx="12" cy="12" r="9"/><path d="M8 7l4 5 4-5M12 12v6M8.5 13h7M8.5 16h7"/>'
 };
 function initTabs() {
-  const TABS = ["flights", "days", "prep", "money"];
+  const TABS = ["home", "flights", "days", "prep", "money"];
   const icons = T.TAB_ICONS || {};
   $$("#tabbar [data-ic]").forEach(i => {
     const k = i.dataset.ic;
     i.innerHTML = icons[k] ? `<img src="${icons[k]}" alt="">` : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px currentColor)">${TAB_SVG[k]}</svg>`;
   });
   const show = (tab, push) => {
-    if (!TABS.includes(tab)) tab = "days";
+    if (!TABS.includes(tab)) tab = "home";
+    if (tab === "home") renderHome();
     $$(".page").forEach(p => p.classList.toggle("on", p.id === tab));
     $$("#tabbar button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
     store.set("tab", tab);
@@ -1098,18 +1236,29 @@ function initTabs() {
   // 進去後：第一次預設在航班，之後回到上次停留的分頁
   const cover = $("#cover"), app = $("#app");
   if (location.hash) history.replaceState(null, "", location.pathname + location.search);
-  const enter = () => {
+  const goIn = () => {
     cover.classList.add("gone");
     setTimeout(() => {
       cover.style.display = "none"; window.__stopRain && window.__stopRain();
-      app.classList.add("on"); show(store.get("tab", "flights"), false);
+      app.classList.add("on"); show(store.get("tab", "home"), false);
     }, 380);
   };
+  // 一定要登入：沒登入過的人，按 ENTER 後出現登入畫面
+  const gate = $("#gate");
+  const enter = () => {
+    if (Acct.logged()) return goIn();
+    gate.innerHTML = `<div style="width:100%;max-width:460px"><div class="gh">ACCESS // LOGIN</div>${joinForm("登入後才能進入。")}</div>`;
+    gate.classList.add("on");
+    setTimeout(() => { const n = $(".jName", gate); n && !n.value && n.focus(); }, 350);
+  };
+  gate.addEventListener("click", e => { const b = e.target.closest("[data-join]"); if (b) doJoin(b.closest(".card")); });
+  gate.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("input")) { const c = e.target.closest(".card"); c && doJoin(c); } });
+  window.__afterLogin = () => { if (gate.classList.contains("on")) { gate.classList.remove("on"); goIn(); } };
   $("#enter").addEventListener("click", enter);
 }
 
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
-initHero(); initFlights(); initDays(); initPrep(); initMoney(); initTabs();
+initHero(); initFlights(); initDays(); initPrep(); initMoney(); initHome(); initTabs();
 window.__ready = true; updateBanners();
 loadItin();
 $("#foot").innerHTML = `LAST UPDATE ${esc(T.updated)}・${window.APP_VER || ""}<br>行程是草稿，隨時會改`;
