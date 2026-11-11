@@ -902,6 +902,7 @@ async function doJoin(root) {
     else if (r.data) { Acct.apply(Acct.merge(r.data, true)); Acct.push(); toast(`歡迎回來，${name}`); }
     else { Acct.push(); toast(r.exists ? `登入成功，${name}` : `帳號建立好了，${name}`); }
     await sync(true);
+    loadItin();
   } catch (e) { done(); toast(e && e.name === "AbortError" ? "Google 回應太久，請再按一次" : "連不上共用帳本，請確認網路或 Apps Script 有沒有部署好"); }
 }
 
@@ -986,6 +987,71 @@ function initMoney() {
 }
 
 /* =========================================================
+   行程從 Google 試算表讀取（「每日」「行程」兩個分頁）
+   ========================================================= */
+const TYPE_ZH = { move: "交通", spot: "景點", food: "吃", note: "提醒" };
+const TYPE_EN = Object.fromEntries(Object.entries(TYPE_ZH).map(([k, v]) => [v, k]));
+const DEFAULT_DAYS = JSON.parse(JSON.stringify(T.days));
+const gName = id => (T.groups.find(g => g.id === id) || {}).name || id;
+const gId = n => { n = String(n).replace(/\s/g, ""); const g = T.groups.find(x => x.name.replace(/\s/g, "") === n || x.id === n); return g ? g.id : null; };
+// 網頁上的行程 → 試算表的列（第一次寫入用）
+function itinToRows() {
+  const days = DEFAULT_DAYS.map(d => [d.date, d.dow, d.title, d.stay, d.people]);
+  const items = [];
+  DEFAULT_DAYS.forEach(d => d.items.forEach(it => items.push([d.date, it.t, TYPE_ZH[it.type] || "景點", it.mode || "", it.text, it.note || "", it.close || "", it.map || "", !!it.tbd, (it.g || []).map(gName).join("、"), it.people || ""])));
+  return { days, items };
+}
+// 試算表的資料 → 網頁的行程
+function applyItin(data) {
+  if (!data || !data.items || !data.items.length) return false;
+  const byDate = {};
+  data.items.forEach(r => {
+    const date = String(r.date || "").trim(); if (!date) return;
+    const it = { t: String(r.t || "").trim() || "—", type: TYPE_EN[String(r.type).trim()] || "spot", text: String(r.text || "").trim() };
+    if (!it.text) return;
+    if (r.mode) it.mode = String(r.mode).trim();
+    if (r.note) it.note = String(r.note).trim();
+    if (r.close) it.close = String(r.close).trim();
+    if (r.map) it.map = String(r.map).trim();
+    if (r.tbd === true || /^(TRUE|是|✓|v|y)$/i.test(String(r.tbd).trim())) it.tbd = true;
+    const gs = String(r.g || "").split(/[、,，\s]+/).map(gId).filter(Boolean);
+    if (gs.length) it.g = gs;
+    if (r.people) it.people = String(r.people).trim();
+    (byDate[date] = byDate[date] || []).push(it);
+  });
+  const dayInfo = {}; (data.days || []).forEach(d => dayInfo[String(d.date).trim()] = d);
+  T.days = DEFAULT_DAYS.map(d0 => {
+    const d = JSON.parse(JSON.stringify(d0)), info = dayInfo[d.date];
+    if (info) { if (info.title) d.title = String(info.title); if (info.stay) d.stay = String(info.stay); if (info.people) d.people = String(info.people); }
+    d.items = byDate[d.date] || [];
+    return d;
+  });
+  return true;
+}
+// 開網頁時：先用上次存下來的行程，再去試算表抓最新的
+const cachedItin = store.get("itin", null);
+if (cachedItin) applyItin(cachedItin);
+async function loadItin() {
+  if (!T.SHEET_URL) return;
+  try {
+    const r = await (await fetch(`${T.SHEET_URL}?action=itin`)).json();
+    if (!r.ok) return;
+    if (!r.items || !r.items.length) { seedItin(); return; }
+    const changed = JSON.stringify(r) !== JSON.stringify(store.get("itin", null));
+    store.set("itin", r);
+    if (changed && applyItin(r) && window.__ready) { renderDay(T.days[curDay], 0); updateBanners(); }
+  } catch {}
+}
+// 試算表還沒有行程：由登入的人把網頁上的行程寫進去（只會寫一次）
+async function seedItin() {
+  if (!Acct.logged()) return;
+  try {
+    const r = await api.post({ action: "seedItin", ...itinToRows() });
+    if (r.ok && !r.skipped) { toast("已把行程寫進試算表，之後可以直接在試算表修改"); setTimeout(loadItin, 1500); }
+  } catch {}
+}
+
+/* =========================================================
    Banner status
    ========================================================= */
 function updateBanners() {
@@ -1045,5 +1111,6 @@ function initTabs() {
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 initHero(); initFlights(); initDays(); initPrep(); initMoney(); initTabs();
 window.__ready = true; updateBanners();
+loadItin();
 $("#foot").innerHTML = `LAST UPDATE ${esc(T.updated)}・${window.APP_VER || ""}<br>行程是草稿，隨時會改`;
 })();

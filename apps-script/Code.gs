@@ -15,6 +15,7 @@ const CHUNK = 45000; // 一格最多約 5 萬字，個人資料太長時分好�
 
 function doGet(e) {
   const p = e.parameter || {};
+  if (p.action === 'itin') return out(itin_()); // 行程不用密碼就能看
   if (p.key !== PASSWORD) return out({ ok: false, error: '密碼錯誤' });
   if (p.action === 'list') return out(list_());
   return out({ ok: false, error: 'unknown action' });
@@ -35,6 +36,7 @@ function doPost(e) {
       case 'delete': return out(del_(b.id, b.by));
       case 'rename': return out(rename_(b.from, b.to, b.pin));
       case 'setFlight': return out(setFlight_(b.name, b.flight, b.pin));
+      case 'seedItin': return out(seedItin_(b.days, b.items));
       default: return out({ ok: false, error: 'unknown action' });
     }
   } finally {
@@ -182,5 +184,62 @@ function rename_(from, to, pin) {
     if (from in split) { split[to] = split[from]; delete split[from]; rv[i][7] = JSON.stringify(split); changed = true; }
     if (changed) rs.getRange(i + 1, 1, 1, rv[i].length).setValues([rv[i]]);
   }
+  return { ok: true };
+}
+
+/* ---------------- 行程（每日、行程 兩個分頁） ---------------- */
+const DAYS_SHEET = '每日';
+const ITEMS_SHEET = '行程';
+const DAYS_HEAD = ['日期', '星期', '標題', '住宿', '人數'];
+const ITEMS_HEAD = ['日期', '時間', '類型', '交通', '內容', '備註', '時間提醒', '地圖搜尋', '待定', '組別', '人數標籤'];
+const MODES = ['地鐵', 'JR', '京阪', '阪急', '阪神', '近鐵', '叡電', '南海', '纜車', '公車', '步行', '計程車', '飛機', '船'];
+
+function cellText_(v, fmt) {
+  if (v instanceof Date) return Utilities.formatDate(v, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), fmt);
+  return String(v == null ? '' : v).trim();
+}
+
+function itin_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ds = ss.getSheetByName(DAYS_SHEET), is = ss.getSheetByName(ITEMS_SHEET);
+  const days = ds ? ds.getDataRange().getValues().slice(1).filter(r => r[0] !== '').map(r => ({
+    date: cellText_(r[0], 'M/d'), dow: cellText_(r[1]), title: cellText_(r[2]), stay: cellText_(r[3]), people: cellText_(r[4])
+  })) : [];
+  const items = is ? is.getDataRange().getValues().slice(1).filter(r => r[0] !== '' && r[4] !== '').map(r => ({
+    date: cellText_(r[0], 'M/d'), t: cellText_(r[1], 'HH:mm'), type: cellText_(r[2]), mode: cellText_(r[3]), text: cellText_(r[4]),
+    note: cellText_(r[5]), close: cellText_(r[6]), map: cellText_(r[7]), tbd: r[8] === true || /^(TRUE|是|✓)$/i.test(String(r[8])),
+    g: cellText_(r[9]), people: cellText_(r[10])
+  })) : [];
+  return { ok: true, days: days, items: items };
+}
+
+// 第一次：把網頁上的行程寫進試算表（已經有資料就不會覆蓋）
+function seedItin_(days, items) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let is = ss.getSheetByName(ITEMS_SHEET);
+  if (is && is.getLastRow() > 1) return { ok: true, skipped: true };
+  if (!Array.isArray(days) || !Array.isArray(items) || !items.length) return { ok: false, error: '沒有行程資料' };
+  let ds = ss.getSheetByName(DAYS_SHEET);
+  if (!ds) ds = ss.insertSheet(DAYS_SHEET);
+  if (!is) is = ss.insertSheet(ITEMS_SHEET);
+  ds.clear(); is.clear();
+  // 日期、時間都存成純文字，避免被自動轉成日期格式
+  ds.getRange(1, 1, days.length + 1, DAYS_HEAD.length).setNumberFormat('@');
+  ds.getRange(1, 1, 1, DAYS_HEAD.length).setValues([DAYS_HEAD]).setFontWeight('bold').setBackground('#1c0f3a').setFontColor('#ffffff');
+  ds.getRange(2, 1, days.length, DAYS_HEAD.length).setValues(days.map(r => DAYS_HEAD.map((_, i) => r[i] == null ? '' : String(r[i]))));
+  ds.setFrozenRows(1); ds.setColumnWidth(3, 260); ds.setColumnWidth(4, 180);
+
+  const n = items.length, extra = 200; // 多留 200 列給之後新增
+  is.getRange(1, 1, n + extra + 1, 8).setNumberFormat('@');
+  is.getRange(1, 10, n + extra + 1, 2).setNumberFormat('@');
+  is.getRange(1, 1, 1, ITEMS_HEAD.length).setValues([ITEMS_HEAD]).setFontWeight('bold').setBackground('#1c0f3a').setFontColor('#ffffff');
+  // 下拉選單、勾選框
+  is.getRange(2, 3, n + extra, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['交通', '景點', '吃', '提醒'], true).setAllowInvalid(false).build());
+  is.getRange(2, 4, n + extra, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(MODES, true).setAllowInvalid(true).build());
+  is.getRange(2, 9, n + extra, 1).insertCheckboxes();
+  is.getRange(2, 1, n, ITEMS_HEAD.length).setValues(items.map(r => ITEMS_HEAD.map((_, i) => i === 8 ? !!r[i] : (r[i] == null ? '' : String(r[i])))));
+  is.setFrozenRows(1);
+  [70, 60, 60, 70, 300, 260, 140, 160, 50, 150, 90].forEach((w, i) => is.setColumnWidth(i + 1, w));
+  is.getRange(1, 1).setNote('日期寫成 1/13 這種格式。\n時間可以寫 09:30，或「上午」「下午」「晚上」「—」。\n組別空白＝這天的預設組別；只給某組看就填「京都組」「1/15 大阪組」「1/16 大阪組」，多組用頓號隔開。\n同一天的項目會照時間自動排序。');
   return { ok: true };
 }
