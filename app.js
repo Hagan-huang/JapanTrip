@@ -6,8 +6,10 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const store = {
   get(k, d) { try { const v = localStorage.getItem("kt_" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
-  set(k, v) { try { localStorage.setItem("kt_" + k, JSON.stringify(v)); } catch {} }
+  set(k, v) { try { localStorage.setItem("kt_" + k, JSON.stringify(v)); } catch {} if (!store._applying && SYNC_KEYS.includes(k) && window.__acctDirty) window.__acctDirty(); }
 };
+// 跟著帳號走的資料（登入後存到 Google 試算表）
+const SYNC_KEYS = ["personal", "lists", "checks", "rate", "budget", "group"];
 let toastTimer;
 function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.classList.add("show");
@@ -168,7 +170,7 @@ function paxLine(f) {
 }
 function renderPick() {
   const el = $("#fpick"); if (!el || typeof M === "undefined") return;
-  if (!M.me || (remote && !M.key)) { el.innerHTML = joinForm("加入群組後，就能登記你搭哪一班，名字會出現在航班卡上。"); return; }
+  if (!Acct.logged()) { el.innerHTML = joinForm("登入後，就能登記你搭哪一班，名字會出現在航班卡上。"); return; }
   const mine = flightOf()[M.me];
   el.innerHTML = `<div class="card glow" style="--c:var(--yellow)">
     <div style="font-weight:900;margin-bottom:8px">✈ ${esc(M.me)}，你搭哪一班？</div>
@@ -179,7 +181,7 @@ async function pickFlight(id) {
   const old = flightOf()[M.me];
   M.cache.flights = { ...flightOf(), [M.me]: id }; renderFlights();
   try {
-    const r = await api.post({ action: "setFlight", name: M.me, flight: id });
+    const r = await api.post({ action: "setFlight", name: M.me, flight: id, pin: Acct.pin });
     if (!r.ok) throw new Error(r.error === "unknown action" ? "要先更新 Apps Script 程式" : r.error || "登記失敗");
     store.set("cache", M.cache);
     // 順便把行程頁切到這班對應的組別
@@ -452,19 +454,19 @@ function renderDay(d, delay = 0) {
    ========================================================= */
 // 待辦／待買清單：可以新增、刪除，存在這支手機
 const LISTS = store.get("lists", null) || { todo: T.todo.map(x => ({ ...x })), shopping: T.shopping.map(x => ({ ...x })) };
+let CHECKS = store.get("checks", {});
 function initPrep() {
-  const checks = store.get("checks", {});
   const save = () => store.set("lists", LISTS);
   const box = (el, key, title) => {
-    const list = LISTS[key], done = list.filter(x => checks[x.id]).length;
+    const list = LISTS[key], done = list.filter(x => CHECKS[x.id]).length;
     el.innerHTML = `<h4>${title}<span class="prog">${done}/${list.length}</span></h4>` +
-      (list.length ? list.map(x => `<div class="ckrow"><label><input type="checkbox" data-id="${esc(x.id)}" ${checks[x.id] ? "checked" : ""}><span>${esc(x.text)}</span></label><button class="x" data-del="${key}:${esc(x.id)}" aria-label="刪除">✕</button></div>`).join("") : `<div class="empty">清單是空的</div>`) +
+      (list.length ? list.map(x => `<div class="ckrow"><label><input type="checkbox" data-id="${esc(x.id)}" ${CHECKS[x.id] ? "checked" : ""}><span>${esc(x.text)}</span></label><button class="x" data-del="${key}:${esc(x.id)}" aria-label="刪除">✕</button></div>`).join("") : `<div class="empty">清單是空的</div>`) +
       `<form class="addrow" data-add="${key}"><input class="in" maxlength="60" placeholder="新增一項…"><button class="btn sm" type="submit">＋ 加入</button></form>`;
   };
-  const render = () => { box($("#todoBox"), "todo", "待辦清單"); box($("#shopBox"), "shopping", "待買清單"); if (window.__ready) updateBanners(); };
+  const render = window.__renderPrep = () => { box($("#todoBox"), "todo", "待辦清單"); box($("#shopBox"), "shopping", "待買清單"); if (window.__ready) updateBanners(); };
   render();
   $("#prep").addEventListener("change", e => {
-    if (e.target.dataset.id) { checks[e.target.dataset.id] = e.target.checked; store.set("checks", checks); render(); }
+    if (e.target.dataset.id) { CHECKS[e.target.dataset.id] = e.target.checked; store.set("checks", CHECKS); render(); }
   });
   $("#prep").addEventListener("submit", e => {
     const f = e.target.closest("[data-add]"); if (!f) return;
@@ -477,8 +479,8 @@ function initPrep() {
     const b = e.target.closest("[data-del]"); if (!b) return;
     const [key, id] = b.dataset.del.split(":"), item = LISTS[key].find(x => x.id === id);
     if (!item || !confirm(`刪除「${item.text}」？`)) return;
-    LISTS[key] = LISTS[key].filter(x => x.id !== id); delete checks[id];
-    store.set("checks", checks); save(); render();
+    LISTS[key] = LISTS[key].filter(x => x.id !== id); delete CHECKS[id];
+    store.set("checks", CHECKS); save(); render();
   });
   $("#stayList").innerHTML = T.stays.map(s => `
     <div class="card glow stay" style="--c:var(--purple)">
@@ -514,7 +516,7 @@ const api = remote ? {
     return r.json();
   },
   async post(body) {
-    const r = await fetch(T.SHEET_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ ...body, key: M.key }) });
+    const r = await fetch(T.SHEET_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ name: M.me, ...body, key: M.key, pin: Acct.pin }) });
     return r.json();
   }
 } : {
@@ -524,7 +526,16 @@ const api = remote ? {
   async post(b) {
     const d = this.db();
     if (b.action === "setFlight") { d.flights = d.flights || {}; d.flights[b.name] = b.flight; this.save(d); return { ok: true }; }
-    if (b.action === "join") { const ex = d.members.includes(b.name); if (!ex) d.members.push(b.name); this.save(d); return { ok: true, exists: ex }; }
+    d.pins = d.pins || {}; d.user = d.user || {};
+    if (b.action === "join") {
+      if (!b.pin) return { ok: false, error: "請設定個人密碼" };
+      const ex = d.members.includes(b.name);
+      if (ex && d.pins[b.name] && d.pins[b.name] !== b.pin) return { ok: false, error: "個人密碼錯誤（這個暱稱已經有人用了）" };
+      if (!ex) d.members.push(b.name); d.pins[b.name] = b.pin; this.save(d);
+      return { ok: true, exists: ex, data: d.user[b.name] || null };
+    }
+    if (b.action === "getMe") return d.pins[b.name] === b.pin ? { ok: true, data: d.user[b.name] || null } : { ok: false, error: "個人密碼錯誤" };
+    if (b.action === "saveMe") { if (d.pins[b.name] !== b.pin) return { ok: false, error: "個人密碼錯誤" }; d.user[b.name] = b.data; this.save(d); return { ok: true }; }
     if (b.action === "add") { if (!d.records.some(r => r.id === b.rec.id)) d.records.push(b.rec); this.save(d); return { ok: true }; }
     if (b.action === "delete") { d.records = d.records.filter(r => !(r.id === b.id && r.createdBy === b.by)); this.save(d); return { ok: true }; }
     if (b.action === "rename") {
@@ -536,6 +547,58 @@ const api = remote ? {
     return { ok: false, error: "unknown" };
   }
 };
+
+/* ---- 帳號同步 ---- */
+const Acct = {
+  pin: store.get("pin", ""),
+  timer: 0,
+  logged() { return !!(M.me && this.pin && (!remote || M.key)); },
+  snapshot() { return { personal: M.personal, lists: LISTS, checks: CHECKS, rate: M.rate, budget: M.budget, group, savedAt: Date.now() }; },
+  // 合併雲端和手機上的資料：個人帳兩邊聯集；其他設定 preferRemote 時以雲端為準
+  merge(remote, preferRemote) {
+    const local = this.snapshot(), out = { ...local };
+    const ids = new Set((remote.personal || []).map(r => r.id));
+    out.personal = [...(remote.personal || []), ...local.personal.filter(r => !ids.has(r.id))];
+    if (preferRemote) ["lists", "checks", "rate", "budget", "group"].forEach(k => { if (remote[k] != null) out[k] = remote[k]; });
+    return out;
+  },
+  apply(d) {
+    if (!d) return;
+    store._applying = true;
+    if (Array.isArray(d.personal)) { M.personal = d.personal; store.set("personal", M.personal); }
+    if (d.lists && Array.isArray(d.lists.todo)) { LISTS.todo = d.lists.todo; LISTS.shopping = d.lists.shopping || []; store.set("lists", LISTS); }
+    if (d.checks) { CHECKS = d.checks; store.set("checks", CHECKS); }
+    if (d.rate > 0) { M.rate = d.rate; store.set("rate", M.rate); }
+    if (typeof d.budget === "number") { M.budget = d.budget; store.set("budget", M.budget); }
+    if (d.group && (d.group === "all" || GIDS.includes(d.group))) { group = d.group; store.set("group", group); }
+    store._applying = false;
+    if (window.__renderPrep) window.__renderPrep();
+    if (window.__ready) { renderGroupSel(); renderDay(T.days[curDay], 0); renderMoney(); updateBanners(); }
+  },
+  dirty() { store.set("dirty", true); clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), 1200); },
+  async push() {
+    if (!this.logged()) return;
+    try { const r = await api.post({ action: "saveMe", name: M.me, pin: this.pin, data: this.snapshot() }); if (r.ok) store.set("dirty", false); } catch {}
+  },
+  async pull() {
+    if (!this.logged()) return;
+    try {
+      const r = await api.post({ action: "getMe", name: M.me, pin: this.pin });
+      if (!r.ok) { if ((r.error || "").includes("個人密碼")) { this.pin = ""; store.set("pin", ""); renderMoney(); toast("請重新登入"); } return; }
+      if (!r.data) { this.push(); return; }
+      if (store.get("dirty", false)) { this.apply(this.merge(r.data, false)); this.push(); }
+      else this.apply(this.merge(r.data, true));
+    } catch {}
+  },
+  clearLocal() {
+    store._applying = true;
+    M.personal = []; store.set("personal", []);
+    LISTS.todo = T.todo.map(x => ({ ...x })); LISTS.shopping = T.shopping.map(x => ({ ...x })); store.set("lists", null);
+    CHECKS = {}; store.set("checks", {}); store.set("budget", 0); store.set("dirty", false);
+    store._applying = false;
+  }
+};
+window.__acctDirty = () => Acct.dirty();
 
 const fmtJ = n => "¥" + Math.round(n).toLocaleString();
 const fmtT = n => "NT$" + Math.round(n).toLocaleString();
@@ -589,17 +652,18 @@ async function sync(quiet) {
 
 function renderWho() {
   const w = $("#who");
-  if (!M.me) { w.innerHTML = `<span>還沒加入群組：個人帳可以直接用，分帳要先加入</span>`; return; }
-  w.innerHTML = `<span>我是 <b>${esc(M.me)}</b></span><button class="btn sm dim" id="rename">改名</button>${!remote ? '<span class="pend">單機測試模式</span>' : ""}`;
+  if (!Acct.logged()) { w.innerHTML = `<span>還沒登入：個人帳先存在這支手機，登入後會跟著帳號走</span>`; return; }
+  w.innerHTML = `<span>👤 <b>${esc(M.me)}</b>・資料跟著帳號同步</span><button class="btn sm dim" id="rename">改名</button><button class="btn sm dim" id="logout">登出</button>${!remote ? '<span class="pend">單機測試模式</span>' : ""}`;
 }
 
 function joinForm(msg) {
   return `<div class="card glow" style="--c:var(--yellow)">
-    <div style="font-weight:700;margin-bottom:8px">加入分帳群組</div>
-    <div class="hint" style="margin:0 0 10px">${esc(msg || "輸入你的暱稱，之後其他人分帳時就選得到你。")}</div>
-    <div class="fld"><span>暱稱（最多 12 字）</span><input class="in jName" maxlength="12" value="${esc(M.me)}"></div>
-    ${remote ? `<div class="fld"><span>團體密碼</span><input class="in jKey" type="password" value="${esc(M.key)}"></div>` : `<div class="hint">共用帳本還沒設定，現在是單機測試模式，資料只存在這支手機。</div>`}
-    <button class="btn full yel mt" data-join>加入</button>
+    <div style="font-weight:900;margin-bottom:6px">登入／建立帳號</div>
+    <div class="hint" style="margin:0 0 10px">${esc(msg || "第一次輸入就是建立帳號。")}換手機時輸入同樣的暱稱和個人密碼，你的個人帳、清單和設定都會回來。</div>
+    <div class="fld"><span>暱稱（最多 12 字）</span><input class="in jName" maxlength="12" value="${esc(M.me)}" autocomplete="username"></div>
+    <div class="fld"><span>個人密碼（4–12 字，自己記得就好）</span><input class="in jPin" type="password" maxlength="12" autocomplete="current-password"></div>
+    ${remote ? `<div class="fld"><span>團體密碼</span><input class="in jKey" type="password" value="${esc(M.key)}"></div>` : `<div class="hint">共用帳本還沒設定，現在是單機測試模式。</div>`}
+    <button class="btn full yel mt" data-join>登入</button>
   </div>`;
 }
 
@@ -616,10 +680,10 @@ function renderMoney() {
 
 function viewAdd() {
   const f = M.form, sv = sharedView();
-  const needJoin = f.kind === "s" && (!M.me || (remote && !M.key));
+  const needJoin = f.kind === "s" && !Acct.logged();
   let shared = "";
   if (f.kind === "s") {
-    if (needJoin) shared = joinForm("要分帳，先加入群組。");
+    if (needJoin) shared = joinForm("要分帳，先登入。");
     else {
       if (!f.splitTouched) f.split = [...sv.members];
       if (!f.payer || !sv.members.includes(f.payer)) f.payer = M.me;
@@ -720,7 +784,7 @@ function settle(b) {
 }
 
 function viewGroup() {
-  if (!M.me || (remote && !M.key)) return joinForm();
+  if (!Acct.logged()) return joinForm();
   const sv = sharedView(), b = balances(sv), st = settle(b);
   const pend = M.pending.length;
   const status = !remote ? `<span class="dot warn"></span>單機測試模式（共用帳本還沒設定）`
@@ -787,15 +851,18 @@ async function saveRecord() {
 }
 
 async function doJoin(root) {
-  const name = ($(".jName", root).value || "").trim();
+  const name = ($(".jName", root).value || "").trim(), pin = ($(".jPin", root).value || "").trim();
   if (!name) return toast("請輸入暱稱");
+  if (pin.length < 4) return toast("個人密碼至少 4 個字");
   if (remote) { M.key = ($(".jKey", root).value || "").trim(); if (!M.key) return toast("請輸入團體密碼"); store.set("key", M.key); }
   try {
-    const r = await api.post({ action: "join", name });
-    if (!r.ok) { if (r.error === "密碼錯誤") { M.key = ""; store.set("key", ""); } return toast(r.error || "加入失敗"); }
-    if (r.exists && name !== M.me && !confirm(`「${name}」已經在群組裡，是你本人嗎？`)) return;
-    M.me = name; store.set("me", name); M.form.splitTouched = false;
-    toast(`歡迎，${name}`);
+    const r = await api.post({ action: "join", name, pin });
+    if (!r.ok) { if (r.error === "密碼錯誤") { M.key = ""; store.set("key", ""); toast("團體密碼錯誤"); return; } return toast(r.error || "登入失敗"); }
+    // 換了帳號：先清掉這支手機上別人的個人資料
+    if (M.me && M.me !== name && Acct.pin) Acct.clearLocal();
+    M.me = name; store.set("me", name); Acct.pin = pin; store.set("pin", pin); M.form.splitTouched = false;
+    if (r.data) { Acct.apply(Acct.merge(r.data, true)); Acct.push(); toast(`歡迎回來，${name}`); }
+    else { Acct.push(); toast(`帳號建立好了，${name}`); }
     await sync(true);
   } catch { toast("連不上網路，請稍後再試"); }
 }
@@ -804,7 +871,7 @@ async function doRename() {
   const to = (prompt("新的暱稱（最多 12 字）", M.me) || "").trim().slice(0, 12);
   if (!to || to === M.me) return;
   try {
-    const r = await api.post({ action: "rename", from: M.me, to });
+    const r = await api.post({ action: "rename", from: M.me, to, pin: Acct.pin });
     if (!r.ok) return toast(r.error || "改名失敗");
     M.me = to; store.set("me", to); M.form.splitTouched = false; toast("已改名"); sync(true);
   } catch { toast("改名需要網路"); }
@@ -818,7 +885,10 @@ function download(name, text, type) {
 
 function initMoney() {
   $("#mtabs").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; readForm(); M.tab = b.dataset.m; renderMoney(); });
-  $("#who").addEventListener("click", e => { if (e.target.id === "rename") doRename(); });
+  $("#who").addEventListener("click", e => {
+    if (e.target.id === "rename") doRename();
+    if (e.target.id === "logout" && confirm("登出後，這支手機上的個人帳和清單會清掉（雲端的資料還在，重新登入就會回來）。確定登出？")) { Acct.push().finally(() => { Acct.clearLocal(); store.set("me", ""); store.set("pin", ""); location.reload(); }); }
+  });
   const v = $("#mView");
   v.addEventListener("click", e => {
     const t = e.target.closest("button"); if (!t) return;
@@ -873,6 +943,8 @@ function initMoney() {
   addEventListener("online", () => sync(true));
   renderMoney();
   if (M.me) sync(true);
+  Acct.pull();
+  addEventListener("online", () => { if (store.get("dirty", false)) Acct.push(); });
 }
 
 /* =========================================================
@@ -884,7 +956,7 @@ function updateBanners() {
   set("flights", `去程 <b>${out}</b> 班・回程 <b>${T.flights.length - out}</b> 班・點卡片看飛行過程`);
   const g = group === "all" ? "全部組別" : T.groups.find(x => x.id === group).name, d = T.days[curDay];
   set("days", `${esc(g)}・<b>${esc(d.date)}</b> 週${esc(d.dow)}・DAY ${curDay + 1}/${T.days.length}`);
-  const checks = store.get("checks", {}), all = [...LISTS.todo, ...LISTS.shopping], done = all.filter(x => checks[x.id]).length;
+  const all = [...LISTS.todo, ...LISTS.shopping], done = all.filter(x => CHECKS[x.id]).length;
   set("prep", `完成 <b>${done}/${all.length}</b><span class="pg"><i style="width:${all.length ? done / all.length * 100 : 0}%"></i></span>`);
   if (typeof M !== "undefined") {
     const tot = mineList().reduce((a, r) => a + toJ(r.mine, r.currency), 0);

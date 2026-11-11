@@ -1,5 +1,5 @@
 /**
- * 京都大阪行程網頁：共用分帳後端（Google Apps Script）
+ * 京都大阪行程網頁：共用分帳＋帳號同步後端（Google Apps Script）
  * 把這整份貼到 Google 試算表的「擴充功能 → Apps Script」，
  * 改好下面的團體密碼，再部署成網頁應用程式。
  * 注意：這份放在公開的 GitHub 上，真正的密碼只改在 Apps Script 裡，不要改這個檔案。
@@ -8,7 +8,10 @@ const PASSWORD = '請改成你們的團體密碼';
 
 const MEMBERS = '成員';
 const RECORDS = '分帳紀錄';
+const USERDATA = '個人資料';
 const REC_HEAD = ['id', '日期', '付款人', '金額', '幣別', '分類', '備註', '分給誰(JSON)', '記帳人', '記帳時間', '已刪除'];
+const MEM_HEAD = ['暱稱', '加入時間', '航班', '個人密碼(雜湊)'];
+const CHUNK = 45000; // 一格最多約 5 萬字，個人資料太長時分好幾格存
 
 function doGet(e) {
   const p = e.parameter || {};
@@ -25,11 +28,13 @@ function doPost(e) {
   lock.waitLock(10000);
   try {
     switch (b.action) {
-      case 'join': return out(join_(b.name));
+      case 'join': return out(join_(b.name, b.pin));
+      case 'getMe': return out(getMe_(b.name, b.pin));
+      case 'saveMe': return out(saveMe_(b.name, b.pin, b.data));
       case 'add': return out(add_(b.rec));
       case 'delete': return out(del_(b.id, b.by));
-      case 'rename': return out(rename_(b.from, b.to));
-      case 'setFlight': return out(setFlight_(b.name, b.flight));
+      case 'rename': return out(rename_(b.from, b.to, b.pin));
+      case 'setFlight': return out(setFlight_(b.name, b.flight, b.pin));
       default: return out({ ok: false, error: 'unknown action' });
     }
   } finally {
@@ -44,11 +49,31 @@ function out(obj) {
 function sheet_(name, head) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName(name);
-  if (!sh) { sh = ss.insertSheet(name); sh.appendRow(head); sh.setFrozenRows(1); }
+  if (!sh) { sh = ss.insertSheet(name); sh.appendRow(head); sh.setFrozenRows(1); return sh; }
+  // 舊版表頭比較短時補上新欄位
+  const cur = sh.getRange(1, 1, 1, head.length).getValues()[0];
+  head.forEach((h, i) => { if (!cur[i]) sh.getRange(1, i + 1).setValue(h); });
   return sh;
 }
-const membersSheet_ = () => sheet_(MEMBERS, ['暱稱', '加入時間', '航班']);
+const membersSheet_ = () => sheet_(MEMBERS, MEM_HEAD);
 const recordsSheet_ = () => sheet_(RECORDS, REC_HEAD);
+const userSheet_ = () => sheet_(USERDATA, ['暱稱', '更新時間', '資料(JSON)']);
+
+function hash_(name, pin) {
+  const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(name) + '|' + String(pin) + '|kansai2027', Utilities.Charset.UTF_8);
+  return Utilities.base64Encode(raw);
+}
+function findRow_(sh, name) {
+  const v = sh.getRange(1, 1, Math.max(sh.getLastRow(), 1), 1).getValues();
+  for (let i = 1; i < v.length; i++) if (String(v[i][0]) === String(name)) return i + 1;
+  return 0;
+}
+// 驗證暱稱＋個人密碼，回傳成員所在列（0 代表失敗）
+function auth_(name, pin) {
+  const sh = membersSheet_(), row = findRow_(sh, name);
+  if (!row || !pin) return 0;
+  return sh.getRange(row, 4).getValue() === hash_(name, pin) ? row : 0;
+}
 
 function members_() {
   const v = membersSheet_().getDataRange().getValues().slice(1);
@@ -68,12 +93,43 @@ function list_() {
   return { ok: true, members: members_(), records: records, flights: flights };
 }
 
-function join_(name) {
+function join_(name, pin) {
   name = String(name || '').trim().slice(0, 12);
+  pin = String(pin || '').trim();
   if (!name) return { ok: false, error: '暱稱不能空白' };
-  const exists = members_().indexOf(name) >= 0;
-  if (!exists) membersSheet_().appendRow([name, new Date()]);
-  return { ok: true, exists: exists };
+  if (pin.length < 4) return { ok: false, error: '個人密碼至少 4 個字' };
+  const sh = membersSheet_(), row = findRow_(sh, name);
+  if (!row) { sh.appendRow([name, new Date(), '', hash_(name, pin)]); return { ok: true, exists: false, data: null }; }
+  const saved = sh.getRange(row, 4).getValue();
+  if (!saved) sh.getRange(row, 4).setValue(hash_(name, pin)); // 舊帳號第一次設定個人密碼
+  else if (saved !== hash_(name, pin)) return { ok: false, error: '個人密碼錯誤（這個暱稱已經有人用了）' };
+  return { ok: true, exists: true, data: readData_(name) };
+}
+
+function readData_(name) {
+  const sh = userSheet_(), row = findRow_(sh, name);
+  if (!row) return null;
+  const vals = sh.getRange(row, 3, 1, Math.max(sh.getLastColumn() - 2, 1)).getValues()[0];
+  const json = vals.map(String).join('');
+  try { return json ? JSON.parse(json) : null; } catch (e) { return null; }
+}
+
+function getMe_(name, pin) {
+  if (!auth_(name, pin)) return { ok: false, error: '個人密碼錯誤' };
+  return { ok: true, data: readData_(name) };
+}
+
+function saveMe_(name, pin, data) {
+  if (!auth_(name, pin)) return { ok: false, error: '個人密碼錯誤' };
+  const sh = userSheet_(), json = JSON.stringify(data || {}), parts = [];
+  for (let i = 0; i < json.length; i += CHUNK) parts.push(json.slice(i, i + CHUNK));
+  let row = findRow_(sh, name);
+  if (!row) { sh.appendRow([name]); row = sh.getLastRow(); }
+  const width = Math.max(sh.getLastColumn() - 2, parts.length, 1);
+  const cells = []; for (let i = 0; i < width; i++) cells.push(parts[i] || '');
+  sh.getRange(row, 2).setValue(new Date());
+  sh.getRange(row, 3, 1, width).setNumberFormat('@').setValues([cells]);
+  return { ok: true };
 }
 
 function add_(rec) {
@@ -98,12 +154,24 @@ function del_(id, by) {
   return { ok: true };
 }
 
-function rename_(from, to) {
+function setFlight_(name, flight, pin) {
+  const row = auth_(name, pin);
+  if (!row) return { ok: false, error: '請重新登入' };
+  membersSheet_().getRange(row, 3).setValue(String(flight || ''));
+  return { ok: true };
+}
+
+function rename_(from, to, pin) {
   to = String(to || '').trim().slice(0, 12);
   if (!to) return { ok: false, error: '暱稱不能空白' };
+  const row = auth_(from, pin);
+  if (!row) return { ok: false, error: '請重新登入' };
   if (members_().indexOf(to) >= 0) return { ok: false, error: '這個名字已經有人用了' };
-  const ms = membersSheet_(), mv = ms.getDataRange().getValues();
-  for (let i = 1; i < mv.length; i++) if (String(mv[i][0]) === from) ms.getRange(i + 1, 1).setValue(to);
+  const ms = membersSheet_();
+  ms.getRange(row, 1).setValue(to);
+  ms.getRange(row, 4).setValue(hash_(to, pin)); // 密碼雜湊跟名字綁在一起，要一起更新
+  const us = userSheet_(), urow = findRow_(us, from);
+  if (urow) us.getRange(urow, 1).setValue(to);
   const rs = recordsSheet_(), rv = rs.getDataRange().getValues();
   for (let i = 1; i < rv.length; i++) {
     let changed = false;
@@ -115,13 +183,4 @@ function rename_(from, to) {
     if (changed) rs.getRange(i + 1, 1, 1, rv[i].length).setValues([rv[i]]);
   }
   return { ok: true };
-}
-
-function setFlight_(name, flight) {
-  const sh = membersSheet_(), v = sh.getDataRange().getValues();
-  if (sh.getRange(1, 3).getValue() === '') sh.getRange(1, 3).setValue('航班');
-  for (let i = 1; i < v.length; i++) {
-    if (String(v[i][0]) === String(name)) { sh.getRange(i + 1, 3).setValue(String(flight || '')); return { ok: true }; }
-  }
-  return { ok: false, error: '找不到這個成員，請先加入群組' };
 }
