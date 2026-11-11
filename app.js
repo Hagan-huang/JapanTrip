@@ -369,9 +369,7 @@ function selectDay(i, anim) {
   view.insertAdjacentHTML("beforeend", FX);
   const fx = $("#fx"); fx.style.top = top + "px"; fx.style.height = h + "px";
   requestAnimationFrame(() => fx.classList.add("go"));
-  view.classList.add("shake");
-  if (navigator.vibrate) setTimeout(() => navigator.vibrate(30), 300);
-  setTimeout(() => { halves.forEach(x => x.remove()); fx.remove(); view.classList.remove("shake"); slashing = false; }, 1000);
+  setTimeout(() => { halves.forEach(x => x.remove()); fx.remove(); slashing = false; }, 1000);
 }
 function renderDay(d, delay = 0) {
   const c = HUE[d.hue] || "var(--cyan)";
@@ -862,5 +860,5 @@ function initTabs() {
 }
 
 initHero(); initFlights(); initDays(); initPrep(); initMoney(); initTabs();
-$("#foot").innerHTML = `LAST UPDATE ${esc(T.updated)}<br>行程是草稿，隨時會改`;
+$("#foot").innerHTML = `LAST UPDATE ${esc(T.updated)}・${window.APP_VER || ""}<br>行程是草稿，隨時會改`;
 })();
