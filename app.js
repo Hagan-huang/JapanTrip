@@ -1240,7 +1240,7 @@ function initTabs() {
     cover.classList.add("gone");
     setTimeout(() => {
       cover.style.display = "none"; window.__stopRain && window.__stopRain();
-      app.classList.add("on"); show(store.get("tab", "home"), false);
+      app.classList.add("on"); show("home", false);
     }, 380);
   };
   // 一定要登入：沒登入過的人，按 ENTER 後出現登入畫面
