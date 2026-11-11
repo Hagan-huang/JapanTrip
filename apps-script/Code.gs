@@ -29,6 +29,7 @@ function doPost(e) {
       case 'add': return out(add_(b.rec));
       case 'delete': return out(del_(b.id, b.by));
       case 'rename': return out(rename_(b.from, b.to));
+      case 'setFlight': return out(setFlight_(b.name, b.flight));
       default: return out({ ok: false, error: 'unknown action' });
     }
   } finally {
@@ -46,7 +47,7 @@ function sheet_(name, head) {
   if (!sh) { sh = ss.insertSheet(name); sh.appendRow(head); sh.setFrozenRows(1); }
   return sh;
 }
-const membersSheet_ = () => sheet_(MEMBERS, ['暱稱', '加入時間']);
+const membersSheet_ = () => sheet_(MEMBERS, ['暱稱', '加入時間', '航班']);
 const recordsSheet_ = () => sheet_(RECORDS, REC_HEAD);
 
 function members_() {
@@ -62,7 +63,9 @@ function list_() {
     const d = r[1] instanceof Date ? Utilities.formatDate(r[1], 'Asia/Tokyo', 'yyyy-MM-dd') : String(r[1]);
     return { id: String(r[0]), date: d, payer: String(r[2]), amount: Number(r[3]), currency: String(r[4]), category: String(r[5]), note: String(r[6]), split: split, createdBy: String(r[8]), createdAt: Number(r[9]) || 0 };
   });
-  return { ok: true, members: members_(), records: records };
+  const flights = {};
+  membersSheet_().getDataRange().getValues().slice(1).forEach(r => { if (r[0] && r[2]) flights[String(r[0])] = String(r[2]); });
+  return { ok: true, members: members_(), records: records, flights: flights };
 }
 
 function join_(name) {
@@ -112,4 +115,13 @@ function rename_(from, to) {
     if (changed) rs.getRange(i + 1, 1, 1, rv[i].length).setValues([rv[i]]);
   }
   return { ok: true };
+}
+
+function setFlight_(name, flight) {
+  const sh = membersSheet_(), v = sh.getDataRange().getValues();
+  if (sh.getRange(1, 3).getValue() === '') sh.getRange(1, 3).setValue('航班');
+  for (let i = 1; i < v.length; i++) {
+    if (String(v[i][0]) === String(name)) { sh.getRange(i + 1, 3).setValue(String(flight || '')); return { ok: true }; }
+  }
+  return { ok: false, error: '找不到這個成員，請先加入群組' };
 }

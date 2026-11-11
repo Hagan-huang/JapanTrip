@@ -345,6 +345,11 @@ html,body{overflow-x:hidden;max-width:100%}
 .ckrow .x:active{opacity:1;color:var(--pink)}
 .addrow{display:flex;gap:8px;margin-top:10px}
 .addrow .in{flex:1;padding:8px 10px;font-size:15px}
+.pax{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:10px;font-size:12px}
+.pax .pl{color:var(--dim);font-family:var(--mono);font-size:11px;margin-right:2px}
+.pax .pn{padding:1px 9px;border:1px solid var(--c,var(--cyan));color:var(--text);border-radius:999px;background:color-mix(in srgb,var(--c,var(--cyan)) 12%,transparent)}
+.pax .pn.me{background:var(--c,var(--cyan));color:var(--bg);font-weight:900}
+.pax .none{color:var(--dim)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -371,7 +376,8 @@ html,body{overflow-x:hidden;max-width:100%}
       <div class="bt"><small>フライト</small><h2 data-t="航班">航班</h2><div class="bs" data-bs="flights"></div></div>
     </div>
     <div class="wrap">
-    <div class="ftabs" id="ftabs"></div><div id="flightList"></div><div class="retl">▶ 回程</div><div id="retList"></div>
+    <div id="fpick"></div>
+<div class="ftabs" id="ftabs"></div><div id="flightList"></div><div class="retl">▶ 回程</div><div id="retList"></div>
   
     </div>
   </section>
@@ -431,8 +437,8 @@ html,body{overflow-x:hidden;max-width:100%}
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
-<script>window.APP_VER="v2026111126"</script>
-<script src="data.js?v=2026111126"></script>
-<script src="app.js?v=2026111126"></script>
+<script>window.APP_VER="v2026111127"</script>
+<script src="data.js?v=2026111127"></script>
+<script src="app.js?v=2026111127"></script>
 </body>
 </html>

@@ -143,7 +143,7 @@ function flightCard(f, i) {
   const L = f.legs, a = L[0], z = L[L.length - 1];
   const total = new Date(z.arr) - new Date(a.dep);
   return `<div class="card glow fl" style="--c:${CMAP[f.color] || "var(--cyan)"}" data-f="${i}">
-    <div class="top"><span>${f.ret ? "1/21（四）" : esc(f.date)}　${esc(f.who)}</span><span>${L.map(l => esc(l.no || l.airline)).join(" → ")}</span></div>
+    <div class="top"><span>${f.ret ? "1/21（四）回程・全員" : esc(f.date) + "　去程"}</span><span>${L.map(l => esc(l.no || l.airline)).join(" → ")}</span></div>
     <div class="row">
       <div><div class="t">${localT(a.dep, a.from)}</div><div class="p">${esc(apName(a.from, a.fromT))}</div></div>
       <div class="mid"><span>${L.length > 1 ? "轉機・" : ""}${durTxt(total)}</span></div>
@@ -151,13 +151,48 @@ function flightCard(f, i) {
     </div>
     ${L.length > 1 ? `<div class="legs">經 ${L.slice(0, -1).map(l => AP[l.to].name).join("、")}</div>` : ""}
     ${f.note ? `<div class="nt">▸ ${esc(f.note)}</div>` : ""}
+    ${paxLine(f)}
     <div class="go">飛行過程 ▸</div>
   </div>`;
 }
 let fTab = 0;
+// 誰搭哪一班（存在 Google 試算表）
+const flightOf = () => (typeof M !== "undefined" && M.cache.flights) || {};
+function paxLine(f) {
+  if (typeof M === "undefined") return "";
+  const fm = flightOf(), members = M.cache.members || [];
+  const names = f.ret ? members : members.filter(n => fm[n] === f.id);
+  const want = f.ret ? 8 : f.pax;
+  if (!names.length) return `<div class="pax"><span class="pl">乘客</span><span class="none">還沒有人登記${want ? `（預計 ${want} 人）` : ""}</span></div>`;
+  return `<div class="pax"><span class="pl">乘客 ${names.length}${want ? "/" + want : ""}</span>${names.map(n => `<span class="pn${n === M.me ? " me" : ""}">${esc(n)}</span>`).join("")}</div>`;
+}
+function renderPick() {
+  const el = $("#fpick"); if (!el || typeof M === "undefined") return;
+  if (!M.me || (remote && !M.key)) { el.innerHTML = joinForm("加入群組後，就能登記你搭哪一班，名字會出現在航班卡上。"); return; }
+  const mine = flightOf()[M.me];
+  el.innerHTML = `<div class="card glow" style="--c:var(--yellow)">
+    <div style="font-weight:900;margin-bottom:8px">✈ ${esc(M.me)}，你搭哪一班？</div>
+    <div class="chips">${T.flights.filter(f => !f.ret).map(f => `<button class="chip ${mine === f.id ? "on" : ""}" data-pick="${f.id}">${esc(f.date)} ${esc(f.legs.map(l => l.no || l.airline).join("→"))}</button>`).join("")}</div>
+    <div class="hint">${mine ? "已登記，點別班可以更改。回程大家都一樣，不用選。" : "點一下就登記，名字會出現在那班的卡片上。"}</div></div>`;
+}
+async function pickFlight(id) {
+  const old = flightOf()[M.me];
+  M.cache.flights = { ...flightOf(), [M.me]: id }; renderFlights();
+  try {
+    const r = await api.post({ action: "setFlight", name: M.me, flight: id });
+    if (!r.ok) throw new Error(r.error === "unknown action" ? "要先更新 Apps Script 程式" : r.error || "登記失敗");
+    store.set("cache", M.cache);
+    // 順便把行程頁切到這班對應的組別
+    const f = T.flights.find(x => x.id === id);
+    if (f && f.g && f.g !== group) { group = f.g; store.set("group", group); renderGroupSel(); const ar = T.groups.find(g => g.id === group).arrive; if (curDay < ar) selectDay(ar, false); else renderDay(T.days[curDay], 0); updateBanners(); }
+    toast("已登記 " + (f ? f.date + " " + f.legs.map(l => l.no || l.airline).join("→") : ""));
+  } catch (e) { M.cache.flights = { ...flightOf(), [M.me]: old }; renderFlights(); toast(e.message || "連不上網路"); }
+}
 function initFlights() {
   const out = T.flights.map((f, i) => [f, i]).filter(([f]) => !f.ret);
-  const render = () => {
+  const render = window.renderFlights = () => {
+    renderPick();
+    $("#retList").innerHTML = T.flights.map((f, i) => f.ret ? flightCard(f, i) : "").join("");
     $("#ftabs").innerHTML = T.flightDates.map((d, k) => { const n = out.filter(([f]) => f.date === d).length; return `<button class="${k === fTab ? "on" : ""}" data-t="${k}">${d}<small>${n ? n + " 班" : "—"}</small></button>`; }).join("");
     const list = out.filter(([f]) => f.date === T.flightDates[fTab]);
     $("#flightList").innerHTML = list.length ? list.map(([f, i]) => flightCard(f, i)).join("") : `<div class="card"><div class="empty">這天目前沒有人搭機</div></div>`;
@@ -166,9 +201,12 @@ function initFlights() {
   const gsel = store.get("group", "kyoto"), mine = out.find(([f]) => f.g === gsel);
   fTab = mine ? T.flightDates.indexOf(mine[0].date) : Math.max(0, T.flightDates.findIndex(d => out.some(([f]) => f.date === d)));
   render();
-  $("#retList").innerHTML = T.flights.map((f, i) => f.ret ? flightCard(f, i) : "").join("");
   $("#ftabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { fTab = +b.dataset.t; render(); } });
-  $("#flights").addEventListener("click", e => { const c = e.target.closest(".fl"); if (c) openFlight(T.flights[+c.dataset.f]); });
+  $("#flights").addEventListener("click", e => {
+    const p = e.target.closest("[data-pick]"); if (p) return pickFlight(p.dataset.pick);
+    const j = e.target.closest("[data-join]"); if (j) return doJoin(j.closest(".card"));
+    const c = e.target.closest(".fl"); if (c) openFlight(T.flights[+c.dataset.f]);
+  });
   $("#modal").addEventListener("click", e => { if (e.target.id === "modal" || e.target.closest(".xx")) closeFlight(); });
 }
 
@@ -482,9 +520,10 @@ const api = remote ? {
 } : {
   db() { return store.get("demo", { members: [], records: [] }); },
   save(d) { store.set("demo", d); },
-  async list() { return { ok: true, ...this.db() }; },
+  async list() { return { ok: true, flights: {}, ...this.db() }; },
   async post(b) {
     const d = this.db();
+    if (b.action === "setFlight") { d.flights = d.flights || {}; d.flights[b.name] = b.flight; this.save(d); return { ok: true }; }
     if (b.action === "join") { const ex = d.members.includes(b.name); if (!ex) d.members.push(b.name); this.save(d); return { ok: true, exists: ex }; }
     if (b.action === "add") { if (!d.records.some(r => r.id === b.rec.id)) d.records.push(b.rec); this.save(d); return { ok: true }; }
     if (b.action === "delete") { d.records = d.records.filter(r => !(r.id === b.id && r.createdBy === b.by)); this.save(d); return { ok: true }; }
@@ -535,7 +574,8 @@ async function sync(quiet) {
     }
     const data = await api.list();
     if (!data.ok) throw new Error(data.error || "讀取失敗");
-    M.cache = { members: data.members || [], records: data.records || [] };
+    M.cache = { members: data.members || [], records: data.records || [], flights: data.flights || {} };
+    if (window.renderFlights) renderFlights();
     store.set("cache", M.cache);
     M.online = true;
     if (!quiet) toast("已同步");
@@ -557,14 +597,15 @@ function joinForm(msg) {
   return `<div class="card glow" style="--c:var(--yellow)">
     <div style="font-weight:700;margin-bottom:8px">加入分帳群組</div>
     <div class="hint" style="margin:0 0 10px">${esc(msg || "輸入你的暱稱，之後其他人分帳時就選得到你。")}</div>
-    <div class="fld"><span>暱稱（最多 12 字）</span><input class="in" id="jName" maxlength="12" value="${esc(M.me)}"></div>
-    ${remote ? `<div class="fld"><span>團體密碼</span><input class="in" id="jKey" type="password" value="${esc(M.key)}"></div>` : `<div class="hint">共用帳本還沒設定，現在是單機測試模式，資料只存在這支手機。</div>`}
-    <button class="btn full yel mt" id="jGo">加入</button>
+    <div class="fld"><span>暱稱（最多 12 字）</span><input class="in jName" maxlength="12" value="${esc(M.me)}"></div>
+    ${remote ? `<div class="fld"><span>團體密碼</span><input class="in jKey" type="password" value="${esc(M.key)}"></div>` : `<div class="hint">共用帳本還沒設定，現在是單機測試模式，資料只存在這支手機。</div>`}
+    <button class="btn full yel mt" data-join>加入</button>
   </div>`;
 }
 
 function renderMoney() {
   renderWho();
+  if (window.renderFlights) renderPick();
   if (window.__ready) updateBanners();
   $$("#mtabs button").forEach(b => b.classList.toggle("on", b.dataset.m === M.tab));
   const v = $("#mView");
@@ -745,10 +786,10 @@ async function saveRecord() {
   renderMoney();
 }
 
-async function doJoin() {
-  const name = ($("#jName").value || "").trim();
+async function doJoin(root) {
+  const name = ($(".jName", root).value || "").trim();
   if (!name) return toast("請輸入暱稱");
-  if (remote) { M.key = ($("#jKey").value || "").trim(); if (!M.key) return toast("請輸入團體密碼"); store.set("key", M.key); }
+  if (remote) { M.key = ($(".jKey", root).value || "").trim(); if (!M.key) return toast("請輸入團體密碼"); store.set("key", M.key); }
   try {
     const r = await api.post({ action: "join", name });
     if (!r.ok) { if (r.error === "密碼錯誤") { M.key = ""; store.set("key", ""); } return toast(r.error || "加入失敗"); }
@@ -788,7 +829,7 @@ function initMoney() {
     else if (t.dataset.q) { readForm(); f.split = t.dataset.q === "all" ? [...sharedView().members] : []; f.splitTouched = t.dataset.q !== "all"; renderMoney(); }
     else if (t.dataset.md) { readForm(); f.mode = t.dataset.md; renderMoney(); }
     else if (t.id === "fSave") saveRecord();
-    else if (t.id === "jGo") doJoin();
+    else if (t.dataset.join !== undefined) doJoin(t.closest(".card"));
     else if (t.id === "gSync") sync(false);
     else if (t.dataset.delp) { if (confirm("刪除這筆個人紀錄？")) { M.personal = M.personal.filter(r => r.id !== t.dataset.delp); store.set("personal", M.personal); renderMoney(); } }
     else if (t.dataset.dels) { if (confirm("刪除這筆分帳？所有人都會看不到。")) { const id = t.dataset.dels; if (M.pending.some(p => p.action === "add" && p.rec.id === id)) M.pending = M.pending.filter(p => !(p.action === "add" && p.rec.id === id)); else M.pending.push({ action: "delete", id, by: M.me }); store.set("pending", M.pending); renderMoney(); sync(true); } }
