@@ -161,7 +161,8 @@ function initFlights() {
     $("#flightList").innerHTML = list.length ? list.map(([f, i]) => flightCard(f, i)).join("") : `<div class="card"><div class="empty">這天目前沒有人搭機</div></div>`;
   };
   // 預設選第一個有航班的日期
-  fTab = Math.max(0, T.flightDates.findIndex(d => out.some(([f]) => f.date === d)));
+  const gsel = store.get("group", "kyoto"), mine = out.find(([f]) => f.g === gsel);
+  fTab = mine ? T.flightDates.indexOf(mine[0].date) : Math.max(0, T.flightDates.findIndex(d => out.some(([f]) => f.date === d)));
   render();
   $("#retList").innerHTML = T.flights.map((f, i) => f.ret ? flightCard(f, i) : "").join("");
   $("#ftabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { fTab = +b.dataset.t; render(); } });
@@ -317,15 +318,37 @@ const FX = `<div class="fx" id="fx"><div class="flash"></div>${KATANA}
   <div class="zan">ザシュッ！</div></div>`;
 let curDay = 0;
 new Image().src = "images/katana.png";
+const GIDS = T.groups.map(g => g.id);
+let group = store.get("group", "kyoto");
+if (group !== "all" && !GIDS.includes(group)) group = "kyoto";
+const itemGroups = (it, d) => it.g || d.g || GIDS;
+const visibleItems = d => group === "all" ? d.items : d.items.filter(it => itemGroups(it, d).includes(group));
+function renderGroupSel() {
+  $("#gsel").innerHTML = `<div class="lb">👀 看誰的行程</div><div class="opts">${T.groups.map(g =>
+    `<button data-g="${g.id}" class="${group === g.id ? "on" : ""}">${esc(g.name)}<small>${esc(g.desc)}</small></button>`).join("")}
+    <button data-g="all" class="${group === "all" ? "on" : ""}">全部<small>所有組一起看</small></button></div>`;
+  const arrive = group === "all" ? 0 : T.groups.find(g => g.id === group).arrive;
+  $$(".dt").forEach((b, j) => b.classList.toggle("off", j < arrive));
+}
 function initDays() {
   const railIn = $("#railIn");
   railIn.innerHTML = T.days.map((d, i) =>
     `<button class="dt" data-i="${i}"><span class="d">${esc(d.date)}</span><span class="w">週${esc(d.dow)}</span></button>`).join("");
   railIn.addEventListener("click", e => { const b = e.target.closest(".dt"); if (b) selectDay(+b.dataset.i, true); });
+  $("#dayView").addEventListener("click", e => { const b = e.target.closest("[data-jump]"); if (b) selectDay(+b.dataset.jump, true); });
+  $("#gsel").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    group = b.dataset.g; store.set("group", group); renderGroupSel();
+    // 切到該組第一天（如果目前這天他們還沒到）
+    const arrive = group === "all" ? 0 : T.groups.find(g => g.id === group).arrive;
+    if (curDay < arrive) selectDay(arrive, false); else renderDay(T.days[curDay], 0);
+  });
   // 旅行中預設選今天
   const now = new Date(), y = 2027;
   const idx = T.days.findIndex(d => { const [m, dd] = d.date.split("/").map(Number); const x = new Date(y, m - 1, dd); return x.toDateString() === now.toDateString(); });
-  selectDay(idx >= 0 ? idx : 0, false);
+  renderGroupSel();
+  const arrive = group === "all" ? 0 : T.groups.find(g => g.id === group).arrive;
+  selectDay(idx >= 0 ? idx : arrive, false);
 }
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let slashing = false;
@@ -352,11 +375,16 @@ function selectDay(i, anim) {
 }
 function renderDay(d, delay = 0) {
   const c = HUE[d.hue] || "var(--cyan)";
+  const grp = group === "all" ? null : T.groups.find(g => g.id === group);
+  const away = grp && T.days.indexOf(d) < grp.arrive;
   const rank = t => /^\d/.test(t) ? +t.replace(":", "") : ({ "上午": 900, "下午": 1400, "晚上": 2000 }[t] ?? -1);
-  const sorted = d.items.map((it, k) => [it, k]).sort((x, y) => (rank(x[0].t) - rank(y[0].t)) || (x[1] - y[1])).map(x => x[0]);
+  const alt = (group !== "all" && d.alt && d.alt[group]) || {};
+  const di = T.days.indexOf(d);
+  const sorted = visibleItems(d).map((it, k) => [it, k]).sort((x, y) => (rank(x[0].t) - rank(y[0].t)) || (x[1] - y[1])).map(x => x[0]);
   const items = sorted.map((it, k) => {
     const tbd = it.tbd ? '<span class="tbdl">待定</span>' : "";
-    const pp = it.people ? `<span class="pp">${esc(it.people)}</span>` : "";
+    const gl = group === "all" && (it.g || d.g) && itemGroups(it, d).length < GIDS.length ? itemGroups(it, d).map(id => `<span class="gl">${esc(T.groups.find(g => g.id === id).name)}</span>`).join("") : "";
+    const pp = (it.people ? `<span class="pp">${esc(it.people)}</span>` : "") + gl;
     const close = it.close ? `<div class="close">${esc(it.close)}</div>` : "";
     const note = it.note ? `<div class="sub">${esc(it.note)}</div>` : "";
     let body;
@@ -373,10 +401,10 @@ function renderDay(d, delay = 0) {
   $("#dayView").innerHTML = `
     <div class="card glow dcard" style="--c:${c};animation-delay:${delay}ms;animation-fill-mode:backwards">
       <div class="art"><svg viewBox="0 0 40 40" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[d.icon] || ICONS.torii}</svg></div>
-      <div><div class="k">DAY ${T.days.indexOf(d) + 1} · ${esc(d.date)} 週${esc(d.dow)}</div><h3>${esc(d.title)}</h3>
-      <div class="s">住 ${esc(d.stay)}<span class="pp">${esc(d.people)}</span></div></div>
+      <div><div class="k">DAY ${di + 1} · ${esc(d.date)} 週${esc(d.dow)}</div><h3>${esc(away ? "還在台灣" : alt.title || d.title)}</h3>
+      <div class="s">${away ? `${esc(T.days[grp.arrive].date)} 才出發` : `住 ${esc(alt.stay || d.stay)}<span class="pp">${esc(alt.people || d.people)}</span>`}</div></div>
     </div>
-    <div class="tl">${items}</div>`;
+    ${away ? `<div class="card away"><b>🇹🇼</b>${esc(grp.name)} ${esc(T.days[grp.arrive].date)} 才出發，這天還沒到日本<div class="mt"><button class="btn sm yel" data-jump="${grp.arrive}">看 ${esc(T.days[grp.arrive].date)} ▸</button></div></div>` : `<div class="tl">${items}</div>`}`;
 }
 
 /* =========================================================

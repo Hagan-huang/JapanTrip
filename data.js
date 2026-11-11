@@ -19,6 +19,13 @@ window.TRIP = {
   // 首頁背景圖：Gemini 畫好後放到 images/ 資料夾，填檔名，例如 "images/hero.jpg"
   HERO_IMAGE: "images/hero.jpg",
 
+  // 組別：行程頁可以切換「看誰的行程」，每組只看到自己的安排
+  groups: [
+    { id: "kyoto", name: "京都組", desc: "我們 3 人＋1/14 會合 1 人", arrive: 0 },
+    { id: "osk15", name: "1/15 大阪組", desc: "IT212・2 人", arrive: 2 },
+    { id: "osk16", name: "1/16 大阪組", desc: "IT210・2 人", arrive: 3 }
+  ],
+
   // 機場：lat/lon 用來畫航線地圖；tz 是時區（台灣 +8，韓國、日本 +9）
   airports: {
     TPE: { name: "桃園", lat: 25.08, lon: 121.23, tz: 8 },
@@ -30,17 +37,17 @@ window.TRIP = {
   // 去程依出發日期分頁；回程只有一筆
   flightDates: ["1/13", "1/14", "1/15", "1/16"],
   flights: [
-    { date: "1/13", who: "我們 3 人", color: "cyan",
+    { date: "1/13", g: "kyoto", who: "我們 3 人", color: "cyan",
       note: "大邱要入境：領行李、重新託運（轉機 2h40m）",
       legs: [
         { no: "TW664", airline: "德威航空", from: "TPE", fromT: "T1", to: "TAE", dep: "2027-01-13T01:55+08:00", arr: "2027-01-13T05:20+09:00" },
         { no: "TW509", airline: "德威航空", from: "TAE", to: "KIX", toT: "T1", dep: "2027-01-13T08:00+09:00", arr: "2027-01-13T09:30+09:00" }
       ] },
-    { date: "1/14", who: "京都會合 1 人", color: "purple", note: "約 21:30 到京都站",
+    { date: "1/14", g: "kyoto", who: "京都會合 1 人", color: "purple", note: "約 21:30 到京都站",
       legs: [ { no: "CI176", airline: "中華航空", from: "KHH", to: "KIX", toT: "T1", dep: "2027-01-14T15:25+08:00", arr: "2027-01-14T19:10+09:00" } ] },
-    { date: "1/15", who: "大阪會合 2 人", color: "yellow", note: "",
+    { date: "1/15", g: "osk15", who: "大阪會合 2 人", color: "yellow", note: "",
       legs: [ { no: "IT212", airline: "台灣虎航", from: "TPE", fromT: "T1", to: "KIX", toT: "T1", dep: "2027-01-15T14:40+08:00", arr: "2027-01-15T17:55+09:00" } ] },
-    { date: "1/16", who: "大阪會合 2 人", color: "yellow", note: "",
+    { date: "1/16", g: "osk16", who: "大阪會合 2 人", color: "yellow", note: "",
       legs: [ { no: "IT210", airline: "台灣虎航", from: "TPE", fromT: "T1", to: "KIX", toT: "T1", dep: "2027-01-16T07:00+08:00", arr: "2027-01-16T10:25+09:00" } ] },
     { ret: true, who: "回程・全員", color: "pink", note: "捷星廉航：最晚 12:55 到機場",
       legs: [ { no: "GK055", airline: "捷星日本", from: "KIX", fromT: "T1", to: "TPE", toT: "T1", dep: "2027-01-21T14:55+09:00", arr: "2027-01-21T17:15+08:00" } ] }
@@ -48,7 +55,7 @@ window.TRIP = {
 
   days: [
     {
-      date: "1/13", dow: "三", icon: "plane", hue: "cyan",
+      date: "1/13", g: ["kyoto"], dow: "三", icon: "plane", hue: "cyan",
       title: "抵達＋東山散步", stay: "EN HOTEL Kyoto", people: "3 人",
       items: [
         { t: "09:30", type: "move", mode: "飛機", text: "關西機場 T1 入境", note: "紅眼班機，今天排輕鬆" },
@@ -59,7 +66,7 @@ window.TRIP = {
       ]
     },
     {
-      date: "1/14", dow: "四", icon: "torii", hue: "pink",
+      date: "1/14", g: ["kyoto"], dow: "四", icon: "torii", hue: "pink",
       title: "鞍馬・貴船＋金閣寺", stay: "EN HOTEL Kyoto", people: "3 人",
       items: [
         { t: "08:30", type: "move", mode: "京阪", text: "祇園四條 → 出町柳，轉叡山電車到鞍馬", note: "出町柳到鞍馬約 30 分，¥470" },
@@ -73,8 +80,9 @@ window.TRIP = {
       ]
     },
     {
-      date: "1/15", dow: "五", icon: "torii2", hue: "purple",
-      title: "白鬚神社＋比叡山", stay: "EN HOTEL Kyoto（大阪 2 人另住）", people: "京都 4 人＋大阪 2 人",
+      date: "1/15", g: ["kyoto"], dow: "五", icon: "torii2", hue: "purple",
+      title: "白鬚神社＋比叡山", stay: "EN HOTEL Kyoto", people: "4 人",
+      alt: { osk15: { title: "抵達大阪", stay: "難波一帶（待訂）", people: "2 人" } },
       items: [
         { t: "08:00", type: "move", mode: "JR", text: "湖西線 京都 → 近江高島", note: "約 1 小時" },
         { t: "09:10", type: "move", mode: "計程車", text: "近江高島站 → 白鬚神社", note: "約 5 分，4 人剛好一台" },
@@ -84,23 +92,26 @@ window.TRIP = {
         { t: "12:30", type: "spot", text: "延曆寺東塔（根本中堂）＋午餐", close: "東塔 16:00 關", note: "常有積雪，穿防滑的鞋", map: "延暦寺 根本中堂" },
         { t: "15:30", type: "move", mode: "纜車", text: "纜車下山 → JR 回京都", note: "約 17:00 到" },
         { t: "晚上", type: "note", text: "打包，準備明天搬去大阪" },
-        { t: "17:55", type: "move", mode: "飛機", text: "IT212 降落關西機場 T1", people: "大阪 2 人" },
-        { t: "18:45", type: "move", mode: "南海", text: "關西機場 → 難波", note: "空港急行約 45 分 ¥970；特急 Rapi:t 約 38 分 ¥1,490", people: "大阪 2 人" },
-        { t: "19:45", type: "note", text: "入住今晚的住處（自己訂，難波一帶）", tbd: true, people: "大阪 2 人" },
-        { t: "晚上", type: "food", text: "道頓堀晚餐、逛街", people: "大阪 2 人", map: "道頓堀" }
+        { t: "17:55", type: "move", mode: "飛機", text: "IT212 降落關西機場 T1", g: ["osk15"] },
+        { t: "18:45", type: "move", mode: "南海", text: "關西機場 → 難波", note: "空港急行約 45 分 ¥970；特急 Rapi:t 約 38 分 ¥1,490", g: ["osk15"] },
+        { t: "19:45", type: "note", text: "入住今晚的住處（自己訂，難波一帶）", tbd: true, g: ["osk15"] },
+        { t: "晚上", type: "food", text: "道頓堀晚餐、逛街", g: ["osk15"], map: "道頓堀" }
       ]
     },
     {
       date: "1/16", dow: "六", icon: "boat", hue: "cyan",
       title: "保津川遊船 → 搬去大阪", stay: "大阪 九条南", people: "4 人 → 全員",
+      alt: { osk15: { title: "大阪自由行 → 全員會合", people: "2 人 → 全員" }, osk16: { title: "抵達大阪 → 全員會合", people: "2 人 → 全員" } },
       items: [
-        { t: "08:15", type: "move", mode: "JR", text: "退房 → 京都站轉嵯峨野線到龜岡", note: "龜岡站走 8 分到乘船處" },
-        { t: "上午", type: "spot", text: "大阪市區自由行動（黑門市場、心齋橋）", note: "行李先寄放住處或難波站置物櫃", people: "1/15 到的 2 人" },
-        { t: "10:25", type: "move", mode: "飛機", text: "IT210 降落關西 T1 → 南海到難波", note: "可以先跟 1/15 到的 2 人會合", people: "1/16 到的 2 人" },
-        { t: "—", type: "note", text: "行李怎麼處理？宅急便寄大阪，或寄放京都站置物櫃", tbd: true },
-        { t: "10:00", type: "spot", text: "保津川遊船（約 2 小時，到嵐山）", note: "冬季暖桌船，¥6,000，要預約", close: "冬季 10:00–14:30 開船", map: "保津川下り 乗船場" },
-        { t: "12:00", type: "food", text: "嵐山午餐 → 竹林小徑、渡月橋", map: "嵐山 竹林の小径" },
-        { t: "13:15", type: "move", mode: "阪急", text: "嵐山 → 桂 → 大阪梅田 → 九條", note: "約 1 小時 15 分" },
+        { t: "08:15", type: "move", mode: "JR", text: "退房 → 京都站轉嵯峨野線到龜岡", note: "龜岡站走 8 分到乘船處", g: ["kyoto"] },
+        { t: "上午", type: "spot", text: "大阪市區自由行動（黑門市場、心齋橋）", note: "行李先寄放住處或難波站置物櫃", g: ["osk15"] },
+        { t: "10:25", type: "move", mode: "飛機", text: "IT210 降落關西 T1 → 南海到難波", note: "可以先跟 1/15 大阪組會合", g: ["osk16"] },
+        { t: "12:00", type: "food", text: "跟 1/15 大阪組會合，難波午餐", g: ["osk15", "osk16"] },
+        { t: "14:30", type: "move", mode: "阪神", text: "大阪難波 → 九條，到住宿", note: "約 5 分", g: ["osk15", "osk16"] },
+        { t: "—", type: "note", text: "行李怎麼處理？宅急便寄大阪，或寄放京都站置物櫃", tbd: true, g: ["kyoto"] },
+        { t: "10:00", type: "spot", text: "保津川遊船（約 2 小時，到嵐山）", note: "冬季暖桌船，¥6,000，要預約", close: "冬季 10:00–14:30 開船", map: "保津川下り 乗船場", g: ["kyoto"] },
+        { t: "12:00", type: "food", text: "嵐山午餐 → 竹林小徑、渡月橋", map: "嵐山 竹林の小径", g: ["kyoto"] },
+        { t: "13:15", type: "move", mode: "阪急", text: "嵐山 → 桂 → 大阪梅田 → 九條", note: "約 1 小時 15 分", g: ["kyoto"] },
         { t: "15:00", type: "spot", text: "全員在大阪住宿會合、入住", people: "8 人", map: "大阪市西区九条南1-5-2" },
         { t: "晚上", type: "food", text: "8 人道頓堀晚餐（先訂位）→ 柏青哥初體驗", note: "明天 5 點要出門，別玩太晚" }
       ]
