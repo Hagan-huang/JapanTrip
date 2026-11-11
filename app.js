@@ -838,7 +838,17 @@ function initTabs() {
     scrollTo(0, 0);
     if (tab === "days") { const r = $("#rail"), i = curDay; r.scrollLeft = Math.max(0, 4 + i * 64 + 32 - r.clientWidth / 2); }
   };
-  $("#tabbar").addEventListener("click", e => { const b = e.target.closest("button"); if (b) show(b.dataset.tab, true); });
+  $("#tabbar").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { bar.classList.remove("mini"); show(b.dataset.tab, true); } });
+  // 往下滑縮小、往上滑或到頂/到底恢復
+  const bar = $("#tabbar"); let lastY = scrollY, acc = 0;
+  addEventListener("scroll", () => {
+    const y = scrollY, dy = y - lastY; lastY = y;
+    const atEnd = innerHeight + y >= document.documentElement.scrollHeight - 10;
+    if (y < 80 || atEnd) { bar.classList.remove("mini"); acc = 0; return; }
+    acc = (Math.sign(dy) === Math.sign(acc)) ? acc + dy : dy;
+    if (acc > 24) bar.classList.add("mini");
+    else if (acc < -24) bar.classList.remove("mini");
+  }, { passive: true });
   // 封面：點 ENTER 進入；網址有 #分頁 就直接進去
   const cover = $("#cover");
   const enter = () => {
