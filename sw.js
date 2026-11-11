@@ -1,10 +1,10 @@
 // 離線快取：沒網路時也能打開行程、航班、住宿
-const VER = "kt-v2026111133";
+const VER = "kt-v2026111134";
 const CORE = [
-  "./", "./index.html", "./data.js?v=2026111133", "./app.js?v=2026111133", "./manifest.webmanifest",
+  "./", "./index.html", "./data.js?v=2026111134", "./app.js?v=2026111134", "./manifest.webmanifest",
   "./images/cover.jpg", "./images/hero.jpg", "./images/katana.png",
-  "./images/banner-flights.jpg", "./images/banner-days.jpg", "./images/banner-prep.jpg", "./images/banner-money.jpg",
-  "./images/tab-flights.png", "./images/tab-days.png", "./images/tab-prep.png", "./images/tab-money.png",
+  "./images/banner-home.jpg", "./images/banner-flights.jpg", "./images/banner-days.jpg", "./images/banner-prep.jpg", "./images/banner-money.jpg",
+  "./images/tab-home.png", "./images/tab-flights.png", "./images/tab-days.png", "./images/tab-prep.png", "./images/tab-money.png",
   "./images/icon-192.png", "./images/apple-touch-icon.png"
 ];
 self.addEventListener("install", e => {
