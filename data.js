@@ -18,6 +18,10 @@ window.TRIP = {
 
   // 首頁背景圖：Gemini 畫好後放到 images/ 資料夾，填檔名，例如 "images/hero.jpg"
   HERO_IMAGE: "images/hero.jpg",
+  // 封面圖（直式，手機全螢幕）；沒填就用 HERO_IMAGE
+  COVER_IMAGE: "",
+  // 底部按鈕圖示：Gemini 畫好後放 images/，例如 flights: "images/tab-flights.png"
+  TAB_ICONS: { flights: "", days: "", prep: "", money: "" },
 
   // 組別：行程頁可以切換「看誰的行程」，每組只看到自己的安排
   groups: [

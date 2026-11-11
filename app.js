@@ -85,21 +85,20 @@ function initHero() {
   $("#tTitle").textContent = T.title; $("#tTitle").dataset.t = T.title;
   $("#tRange").textContent = T.range;
   const art = $("#heroArt");
-  if (T.HERO_IMAGE) {
+  const cover = T.COVER_IMAGE || T.HERO_IMAGE;
+  if (T.HERO_IMAGE) document.documentElement.style.setProperty("--img", `url("${T.HERO_IMAGE}")`);
+  if (cover) {
     const img = new Image(); img.className = "bg"; img.alt = "";
-    img.onload = () => {
-      art.innerHTML = ""; art.appendChild(img);
-      const g = document.createElement("div"); g.className = "sunglow"; art.appendChild(g);
-      // 捲動時背景慢慢移動（視差）
-      addEventListener("scroll", () => { const y = Math.min(scrollY, 600); img.style.transform = `scale(1.04) translateY(${y * 0.12}px)`; }, { passive: true });
-    };
+    img.onload = () => { art.innerHTML = ""; art.appendChild(img); };
     img.onerror = () => { art.innerHTML = heroSVG(); };
-    img.src = T.HERO_IMAGE;
+    img.src = cover;
   } else art.innerHTML = heroSVG();
   // 倒數
   const ms = new Date(T.departAt) - new Date();
   const days = Math.ceil(ms / 864e5);
   $("#count").innerHTML = days > 0 ? `出發倒數 <b>${days}</b> 天` : days > -9 ? `旅行中 <b>DAY ${1 - days}</b>` : `旅程結束 <b>✓</b>`;
+  const bd = days > 0 ? `${T.range}　//　T-${days} DAYS` : days > -9 ? `${T.range}　//　DAY ${1 - days}` : T.range;
+  $$("[data-bd]").forEach(x => x.textContent = bd);
   // 雨
   const cv = $("#rain"), cx = cv.getContext("2d");
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -112,6 +111,7 @@ function initHero() {
   resize(); addEventListener("resize", resize);
   let visible = true;
   new IntersectionObserver(e => visible = e[0].isIntersecting).observe(cv);
+  window.__stopRain = () => { visible = false; };
   (function loop() {
     if (visible) {
       cx.clearRect(0, 0, W, H);
@@ -814,20 +814,43 @@ function initMoney() {
 }
 
 /* =========================================================
-   Nav highlight
+   Cover & tabs
    ========================================================= */
-function initNav() {
-  const links = $$("#nav a"), secs = links.map(a => document.getElementById(a.dataset.s));
-  const set = id => links.forEach(a => a.classList.toggle("on", a.dataset.s === id));
-  const onScroll = () => {
-    let cur = null;
-    secs.forEach(s => { if (s.getBoundingClientRect().top < innerHeight * 0.5) cur = s.id; });
-    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) cur = secs[secs.length - 1].id;
-    set(cur);
+const TAB_SVG = {
+  flights: '<path d="M3 13l18-7-4 13-4-4-4 3 1-5z"/><path d="M13 15l8-9"/>',
+  days: '<path d="M3 6q9-3 18 0"/><path d="M5 10h14"/><path d="M7 7v14M17 7v14"/><path d="M12 7v3"/>',
+  prep: '<rect x="5" y="7" width="14" height="14" rx="3"/><path d="M9 7V5a3 3 0 016 0v2"/><path d="M9 13l2 2 4-4"/>',
+  money: '<circle cx="12" cy="12" r="9"/><path d="M8 7l4 5 4-5M12 12v6M8.5 13h7M8.5 16h7"/>'
+};
+function initTabs() {
+  const TABS = ["flights", "days", "prep", "money"];
+  const icons = T.TAB_ICONS || {};
+  $$("#tabbar [data-ic]").forEach(i => {
+    const k = i.dataset.ic;
+    i.innerHTML = icons[k] ? `<img src="${icons[k]}" alt="">` : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px currentColor)">${TAB_SVG[k]}</svg>`;
+  });
+  const show = (tab, push) => {
+    if (!TABS.includes(tab)) tab = "days";
+    $$(".page").forEach(p => p.classList.toggle("on", p.id === tab));
+    $$("#tabbar button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+    store.set("tab", tab);
+    if (push) history.replaceState(null, "", "#" + tab);
+    scrollTo(0, 0);
+    if (tab === "days") { const r = $("#rail"), i = curDay; r.scrollLeft = Math.max(0, 4 + i * 64 + 32 - r.clientWidth / 2); }
   };
-  addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  $("#tabbar").addEventListener("click", e => { const b = e.target.closest("button"); if (b) show(b.dataset.tab, true); });
+  // 封面：點 ENTER 進入；網址有 #分頁 就直接進去
+  const cover = $("#cover");
+  const enter = () => {
+    cover.classList.add("gone"); document.body.style.overflow = "";
+    setTimeout(() => { cover.style.display = "none"; window.__stopRain && window.__stopRain(); }, 600);
+  };
+  const h = location.hash.slice(1);
+  if (TABS.includes(h)) { cover.style.display = "none"; window.__stopRain && window.__stopRain(); show(h, false); }
+  else { document.body.style.overflow = "hidden"; show(store.get("tab", "days"), false); }
+  $("#enter").addEventListener("click", enter);
 }
 
-initHero(); initFlights(); initDays(); initPrep(); initMoney(); initNav();
+initHero(); initFlights(); initDays(); initPrep(); initMoney(); initTabs();
 $("#foot").innerHTML = `LAST UPDATE ${esc(T.updated)}<br>行程是草稿，隨時會改`;
 })();
