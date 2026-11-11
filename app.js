@@ -88,7 +88,7 @@ function initHero() {
   const cover = T.COVER_IMAGE || T.HERO_IMAGE;
   if (T.HERO_IMAGE) document.documentElement.style.setProperty("--img", `url("${T.HERO_IMAGE}")`);
   // 各分頁橫幅圖（有設定就用，沒有就從封面裁）
-  Object.entries(T.BANNERS || {}).forEach(([k, v]) => { const b = $(`.banner[data-b="${k}"]`); if (v && b) { b.style.setProperty("--bimg", `url("${v}")`); b.style.setProperty("--bp", "50% 50%"); b.style.setProperty("--bs", "cover"); } });
+  Object.entries(T.BANNERS || {}).forEach(([k, v]) => { const b = $(`.banner[data-b="${k}"]`); if (v && b) { b.style.setProperty("--bimg", `url("${v}")`); b.style.setProperty("--bp", (T.BANNER_POS || {})[k] || "70% 50%"); b.style.setProperty("--bs", "cover"); } });
   if (cover) {
     const img = new Image(); img.className = "bg"; img.alt = "";
     img.onload = () => { art.innerHTML = ""; art.appendChild(img); };
@@ -346,12 +346,13 @@ function initDays() {
     if (curDay < arrive) selectDay(arrive, false); else renderDay(T.days[curDay], 0);
     updateBanners();
   });
-  // 旅行中預設選今天
-  const now = new Date(), y = 2027;
-  const idx = T.days.findIndex(d => { const [m, dd] = d.date.split("/").map(Number); const x = new Date(y, m - 1, dd); return x.toDateString() === now.toDateString(); });
+  // 行程日期跟著今天走（日本時間）；出發前停在 1/13，結束後停在 1/21
+  const jp = new Date(Date.now() + 9 * 36e5), today = `${jp.getUTCMonth() + 1}/${jp.getUTCDate()}`;
+  const tripEnd = Date.UTC(2027, 0, 21, 23, 59);
+  let idx = jp.getUTCFullYear() === 2027 ? T.days.findIndex(d => d.date === today) : -1;
+  if (idx < 0) idx = jp.getTime() > tripEnd ? T.days.length - 1 : 0;
   renderGroupSel();
-  const arrive = group === "all" ? 0 : T.groups.find(g => g.id === group).arrive;
-  selectDay(idx >= 0 ? idx : arrive, false);
+  selectDay(idx, false);
 }
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let slashing = false;
@@ -853,7 +854,6 @@ function initTabs() {
     $$(".page").forEach(p => p.classList.toggle("on", p.id === tab));
     $$("#tabbar button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
     store.set("tab", tab);
-    if (push) history.replaceState(null, "", "#" + tab);
     scrollTo(0, 0);
     if (tab === "days") { const r = $("#rail"), i = curDay; r.scrollLeft = Math.max(0, 4 + i * 64 + 32 - r.clientWidth / 2); }
   };
@@ -865,9 +865,9 @@ function initTabs() {
     cover.classList.add("gone"); document.body.style.overflow = "";
     setTimeout(() => { cover.style.display = "none"; window.__stopRain && window.__stopRain(); }, 600);
   };
-  const h = location.hash.slice(1);
-  if (TABS.includes(h)) { cover.style.display = "none"; window.__stopRain && window.__stopRain(); show(h, false); }
-  else { document.body.style.overflow = "hidden"; show(store.get("tab", "days"), false); }
+  // 每次打開都從封面進入，進去後預設在行程頁
+  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  document.body.style.overflow = "hidden"; show("days", false);
   $("#enter").addEventListener("click", enter);
 }
 
