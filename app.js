@@ -859,15 +859,17 @@ function initTabs() {
   };
   $("#tabbar").addEventListener("click", e => { const b = e.target.closest("button"); if (b) show(b.dataset.tab, true); });
 
-  // 封面：點 ENTER 進入；網址有 #分頁 就直接進去
-  const cover = $("#cover");
-  const enter = () => {
-    cover.classList.add("gone"); document.body.style.overflow = "";
-    setTimeout(() => { cover.style.display = "none"; window.__stopRain && window.__stopRain(); }, 600);
-  };
-  // 每次打開都從封面進入，進去後預設在行程頁
+  // 封面是獨立的一頁；每次打開都先看到封面，按 ENTER 才進去
+  // 進去後：第一次預設在航班，之後回到上次停留的分頁
+  const cover = $("#cover"), app = $("#app");
   if (location.hash) history.replaceState(null, "", location.pathname + location.search);
-  document.body.style.overflow = "hidden"; show("days", false);
+  const enter = () => {
+    cover.classList.add("gone");
+    setTimeout(() => {
+      cover.style.display = "none"; window.__stopRain && window.__stopRain();
+      app.classList.add("on"); show(store.get("tab", "flights"), false);
+    }, 380);
+  };
   $("#enter").addEventListener("click", enter);
 }
 
