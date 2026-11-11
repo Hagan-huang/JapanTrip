@@ -38,9 +38,9 @@ window.TRIP = {
       ] },
     { date: "1/14", who: "京都會合 1 人", color: "purple", note: "約 21:30 到京都站",
       legs: [ { no: "CI176", airline: "中華航空", from: "KHH", to: "KIX", toT: "T1", dep: "2027-01-14T15:25+08:00", arr: "2027-01-14T19:10+09:00" } ] },
-    { date: "1/15", who: "大阪會合（1/15）", color: "yellow", note: "",
+    { date: "1/15", who: "大阪會合 2 人", color: "yellow", note: "",
       legs: [ { no: "IT212", airline: "台灣虎航", from: "TPE", fromT: "T1", to: "KIX", toT: "T1", dep: "2027-01-15T14:40+08:00", arr: "2027-01-15T17:55+09:00" } ] },
-    { date: "1/16", who: "大阪會合（1/16）", color: "yellow", note: "",
+    { date: "1/16", who: "大阪會合 2 人", color: "yellow", note: "",
       legs: [ { no: "IT210", airline: "台灣虎航", from: "TPE", fromT: "T1", to: "KIX", toT: "T1", dep: "2027-01-16T07:00+08:00", arr: "2027-01-16T10:25+09:00" } ] },
     { ret: true, who: "回程・全員", color: "pink", note: "捷星廉航：最晚 12:55 到機場",
       legs: [ { no: "GK055", airline: "捷星日本", from: "KIX", fromT: "T1", to: "TPE", toT: "T1", dep: "2027-01-21T14:55+09:00", arr: "2027-01-21T17:15+08:00" } ] }
