@@ -20,6 +20,8 @@ window.TRIP = {
   HERO_IMAGE: "images/hero.jpg",
   // 封面圖（直式，手機全螢幕）；沒填就用 HERO_IMAGE
   COVER_IMAGE: "images/cover.jpg",
+  // 各分頁上方橫幅圖（3:1 橫圖）；沒填就從封面裁一塊
+  BANNERS: { flights: "", days: "", prep: "", money: "" },
   // 底部按鈕圖示：Gemini 畫好後放 images/，例如 flights: "images/tab-flights.png"
   TAB_ICONS: { flights: "images/tab-flights.png", days: "images/tab-days.png", prep: "images/tab-prep.png", money: "images/tab-money.png" },
 

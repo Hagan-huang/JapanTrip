@@ -87,6 +87,8 @@ function initHero() {
   const art = $("#heroArt");
   const cover = T.COVER_IMAGE || T.HERO_IMAGE;
   if (T.HERO_IMAGE) document.documentElement.style.setProperty("--img", `url("${T.HERO_IMAGE}")`);
+  // 各分頁橫幅圖（有設定就用，沒有就從封面裁）
+  Object.entries(T.BANNERS || {}).forEach(([k, v]) => { const b = $(`.banner[data-b="${k}"]`); if (v && b) { b.style.setProperty("--bimg", `url("${v}")`); b.style.setProperty("--bp", "50% 50%"); b.style.setProperty("--bs", "cover"); } });
   if (cover) {
     const img = new Image(); img.className = "bg"; img.alt = "";
     img.onload = () => { art.innerHTML = ""; art.appendChild(img); };
@@ -97,7 +99,7 @@ function initHero() {
   const ms = new Date(T.departAt) - new Date();
   const days = Math.ceil(ms / 864e5);
   $("#count").innerHTML = days > 0 ? `出發倒數 <b>${days}</b> 天` : days > -9 ? `旅行中 <b>DAY ${1 - days}</b>` : `旅程結束 <b>✓</b>`;
-  const bd = days > 0 ? `${T.range}　//　T-${days} DAYS` : days > -9 ? `${T.range}　//　DAY ${1 - days}` : T.range;
+  const bd = days > 0 ? `T-${days} DAYS` : days > -9 ? `DAY ${1 - days}` : "COMPLETE";
   $$("[data-bd]").forEach(x => x.textContent = bd);
   // 雨
   const cv = $("#rain"), cx = cv.getContext("2d");
@@ -342,6 +344,7 @@ function initDays() {
     // 切到該組第一天（如果目前這天他們還沒到）
     const arrive = group === "all" ? 0 : T.groups.find(g => g.id === group).arrive;
     if (curDay < arrive) selectDay(arrive, false); else renderDay(T.days[curDay], 0);
+    updateBanners();
   });
   // 旅行中預設選今天
   const now = new Date(), y = 2027;
@@ -364,7 +367,7 @@ function selectDay(i, anim) {
   slashing = true;
   const top = old.offsetTop, h = old.offsetHeight;
   const halves = ["a", "b"].map(k => { const c = old.cloneNode(true); c.classList.add("half", k); c.style.top = top + "px"; c.style.left = "0"; c.style.right = "0"; return c; });
-  renderDay(T.days[i], 320);
+  renderDay(T.days[i], 320); updateBanners();
   view.append(...halves);
   view.insertAdjacentHTML("beforeend", FX);
   const fx = $("#fx"); fx.style.top = top + "px"; fx.style.height = h + "px";
@@ -415,7 +418,7 @@ function initPrep() {
     el.innerHTML = `<h4>${title}<span class="prog">${done}/${list.length}</span></h4>` + list.map(x =>
       `<label><input type="checkbox" data-id="${esc(x.id)}" ${checks[x.id] ? "checked" : ""}><span>${esc(x.text)}</span></label>`).join("");
   };
-  const render = () => { box($("#todoBox"), "待辦清單", T.todo); box($("#shopBox"), "待買清單", T.shopping); };
+  const render = () => { box($("#todoBox"), "待辦清單", T.todo); box($("#shopBox"), "待買清單", T.shopping); if (window.__ready) updateBanners(); };
   render();
   $("#prep").addEventListener("change", e => {
     if (e.target.dataset.id) { checks[e.target.dataset.id] = e.target.checked; store.set("checks", checks); render(); }
@@ -543,6 +546,7 @@ function joinForm(msg) {
 
 function renderMoney() {
   renderWho();
+  if (window.__ready) updateBanners();
   $$("#mtabs button").forEach(b => b.classList.toggle("on", b.dataset.m === M.tab));
   const v = $("#mView");
   if (M.tab === "add") v.innerHTML = viewAdd();
@@ -812,6 +816,23 @@ function initMoney() {
 }
 
 /* =========================================================
+   Banner status
+   ========================================================= */
+function updateBanners() {
+  const set = (k, html) => { const el = $(`[data-bs="${k}"]`); if (el) el.innerHTML = html; };
+  const out = T.flights.filter(f => !f.ret).length;
+  set("flights", `去程 <b>${out}</b> 班・回程 <b>${T.flights.length - out}</b> 班・點卡片看飛行過程`);
+  const g = group === "all" ? "全部組別" : T.groups.find(x => x.id === group).name, d = T.days[curDay];
+  set("days", `${esc(g)}・<b>${esc(d.date)}</b> 週${esc(d.dow)}・DAY ${curDay + 1}/${T.days.length}`);
+  const checks = store.get("checks", {}), all = [...T.todo, ...T.shopping], done = all.filter(x => checks[x.id]).length;
+  set("prep", `完成 <b>${done}/${all.length}</b><span class="pg"><i style="width:${done / all.length * 100}%"></i></span>`);
+  if (typeof M !== "undefined") {
+    const tot = mineList().reduce((a, r) => a + toJ(r.mine, r.currency), 0);
+    set("money", M.me ? `${esc(M.me)}・我的花費 <b>${fmtJ(tot)}</b>` : `個人帳＋團體分帳・我的花費 <b>${fmtJ(tot)}</b>`);
+  }
+}
+
+/* =========================================================
    Cover & tabs
    ========================================================= */
 const TAB_SVG = {
@@ -851,5 +872,6 @@ function initTabs() {
 }
 
 initHero(); initFlights(); initDays(); initPrep(); initMoney(); initTabs();
+window.__ready = true; updateBanners();
 $("#foot").innerHTML = `LAST UPDATE ${esc(T.updated)}・${window.APP_VER || ""}<br>行程是草稿，隨時會改`;
 })();
