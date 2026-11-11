@@ -518,7 +518,7 @@ const api = remote ? {
     return r.json();
   },
   async post(body) {
-    const r = await fetchT(T.SHEET_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ name: M.me, ...body, key: M.key, pin: Acct.pin }) });
+    const r = await fetchT(T.SHEET_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ name: M.me, pin: Acct.pin, ...body, key: M.key }) });
     return r.json();
   }
 } : {
