@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#07060f">
+<meta name="theme-color" content="#121212">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="images/icon-192.png">
@@ -14,7 +14,7 @@
 <title>京都・大阪 9 天 8 夜｜2027.1.13–1.21</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&family=Zen+Antique&family=VT323&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&family=Zen+Antique&family=Shippori+Mincho:wght@500;600&family=VT323&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#07060f; --bg2:#100c22; --panel:#130e2a; --line:#2a2150;
@@ -545,6 +545,135 @@ body.showa .tabbar button.on i{filter:none}
 body.showa .noren{--nc:var(--indigo)}
 body.showa .noren .mon{font-family:var(--disp)}
 body.showa .fx .zan{font-family:var(--disp);font-style:normal;-webkit-text-stroke:0;color:var(--cream)}
+
+/* =========================================================
+   墨色精品（body.showa.sumi，預設）
+   原則：近黑底＋米白字＋唯一強調色金色；不包框、多留白；
+   標題用明朝體、內文用黑體；圖示全部細線
+   ========================================================= */
+.li{width:1.05em;height:1.05em;vertical-align:-.17em;flex:none}
+.tabli{display:none}
+.close::before{content:"";display:inline-block;width:12px;height:12px;margin-right:4px;vertical-align:-1px;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 3'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 3'/%3E%3C/svg%3E") center/contain no-repeat}
+body.sumi{--bg:#121212;--bg2:#161616;--panel:#1b1b1b;--line:#2a2a2a;--text:#ece8e1;--dim:#8d877d;--gold:#c8a55e;
+  --cyan:#b8b2a7;--pink:#c8a55e;--yellow:#c8a55e;--purple:#a39db0;--green:#93b08f;--orange:#c98a5a;
+  --brick:#c8a55e;--cream:#ece8e1;--indigo:#20263a;
+  --disp:"Shippori Mincho","Noto Serif TC",serif;--mono:"Noto Sans TC",system-ui,sans-serif;
+  background:#121212;font-size:15px;letter-spacing:.01em}
+body.sumi::after,body.sumi::before{display:none}
+body.sumi b,body.sumi strong,body.sumi h3,body.sumi h4,body.sumi .tabbar button,body.sumi .gsel button,body.sumi .spot .n,body.sumi .ftabs button,body.sumi .seg button,body.sumi .close,body.sumi .fl .top,body.sumi .fl .go{font-weight:500}
+body.sumi .wrap{padding:0 20px}
+/* 封面 */
+body.sumi .vhs{display:none}
+body.sumi .cover .shade{height:70%;background:linear-gradient(180deg,transparent,rgba(18,18,18,.82) 45%,#121212 88%)}
+body.sumi .code{color:var(--gold);letter-spacing:.6em;font-size:10px}
+body.sumi .glitch{font-family:var(--disp);font-weight:500;letter-spacing:.08em;color:var(--text)}
+body.sumi .range{font-size:12px;letter-spacing:.3em}
+body.sumi .count{border:0;background:none;padding:2px 0;color:var(--dim);font-size:13px}
+body.sumi .count b{color:var(--gold);font-family:var(--disp);font-weight:500;font-size:18px;margin:0 2px}
+body.sumi .enter b.play,body.sumi .enter span.en{display:none}
+body.sumi .enter b.en,body.sumi .enter span.play{display:block}
+body.sumi .enter{font-family:var(--disp);font-weight:500;font-size:15px;letter-spacing:.6em;color:var(--gold);border:1px solid rgba(200,165,94,.6);border-radius:999px;padding:12px 30px 10px 38px}
+body.sumi .enter span.play{font-family:var(--body);font-size:10px;letter-spacing:.35em;color:var(--dim);margin-top:4px}
+/* 分頁標題：不放圖，只留大字與金線 */
+body.sumi .banner{height:calc(150px + env(safe-area-inset-top));border:0;box-shadow:none}
+body.sumi .banner::before{background:#121212}
+body.sumi .bimg{display:none}
+body.sumi .hud{left:20px;right:20px;top:auto;bottom:112px;font-size:11px;letter-spacing:.14em}
+body.sumi .hud span,body.sumi .hud i{display:none}
+body.sumi .hud b{color:var(--dim);font-weight:400;text-shadow:none}
+body.sumi .bt{left:20px;right:20px;bottom:16px}
+body.sumi .bt small{display:none}
+body.sumi .bt h2{font-family:var(--disp);font-weight:500;font-size:32px;letter-spacing:.1em;color:var(--text);border:0;padding:0;line-height:1.15}
+body.sumi .bt h2::after{display:block;content:"";position:static;width:24px;height:1px;margin-top:12px;background:var(--gold);clip-path:none;transform:none;opacity:1;animation:none}
+body.sumi .bs{margin-top:10px;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 卡片：無框、淡底、大圓角 */
+body.sumi .card:not(.ticket){background:#1b1b1b;border:0;border-radius:16px;padding:16px 18px;margin-bottom:14px}
+body.sumi .card.glow:not(.ticket){border:0}
+body.sumi .hc h4{font-size:11px;font-weight:400;letter-spacing:.16em;color:var(--dim);margin-bottom:10px}
+body.sumi .hc h4 .li{color:var(--gold)}
+body.sumi .hdate .dd{font-size:46px;font-weight:500;color:var(--text)}
+body.sumi .hdate .dw{color:var(--dim);font-weight:400}
+body.sumi .hdate .ds b,body.sumi .next .cd{color:var(--gold);font-weight:500}
+body.sumi .next .nt b{font-family:var(--disp);font-weight:500;font-size:18px}
+body.sumi .mini-tl{border-top:1px solid var(--line);padding-top:10px;margin-top:14px}
+body.sumi .mini-tl div{padding:5px 0}
+body.sumi .mini-tl div.now{color:var(--gold)}
+body.sumi .wx .ic .li{width:34px;height:34px;stroke-width:1.2;vertical-align:0}
+body.sumi .wx .tp{font-weight:500}
+body.sumi .wxd div{background:none;border:0}
+body.sumi .wxd div b .li{width:20px;height:20px;stroke-width:1.4}
+body.sumi .bar i{background:var(--gold)}
+/* 按鈕、選項：膠囊、細線 */
+body.sumi .btn{border:1px solid #3a3a3a;color:var(--text);background:transparent;border-radius:999px;padding:8px 18px;font-weight:500}
+body.sumi .btn.sm{padding:5px 13px;font-size:12px}
+body.sumi .btn.pink,body.sumi .btn.yel{border-color:rgba(200,165,94,.65);color:var(--gold)}
+body.sumi .btn.dim{color:var(--dim);border-color:#333}
+body.sumi .btn.full.pink,body.sumi .btn.full.yel{background:var(--gold);border-color:var(--gold);color:#121212}
+body.sumi .chip{border-color:#333;color:var(--dim)}
+body.sumi .chip.on{border-color:var(--gold);color:var(--gold);background:rgba(200,165,94,.08)}
+body.sumi .quick .chip{color:var(--text);border-color:#333}
+body.sumi .in{background:#181818;border:1px solid #2e2e2e;border-radius:12px}
+body.sumi .in:focus{border-color:var(--gold)}
+body.sumi .seg{border:0;border-bottom:1px solid var(--line);border-radius:0}
+body.sumi .seg button{color:var(--dim)}
+body.sumi .seg button.on{color:var(--text);box-shadow:inset 0 -1px 0 var(--gold)!important}
+body.sumi .ftabs{gap:0;border-bottom:1px solid var(--line);margin-bottom:18px}
+body.sumi .ftabs button,body.sumi .ftabs button.on{border:0;border-radius:0;background:none;font-family:var(--disp);font-size:16px;color:var(--dim);padding:10px 0 8px}
+body.sumi .ftabs button.on{color:var(--text);box-shadow:inset 0 -1px 0 var(--gold)!important}
+body.sumi .gsel button{border-color:#333;color:var(--dim)}
+body.sumi .gsel button.on{background:none;border-color:var(--gold);color:var(--gold)}
+body.sumi .gsel .lb .li{color:var(--gold)}
+body.sumi .ck input{border:1px solid #555;border-radius:50%}
+body.sumi .ck input:checked{background:var(--gold);border-color:var(--gold)}
+body.sumi .ck input:checked::after{color:#121212;font-weight:500;font-size:12px}
+body.sumi .tog{border:1px solid #333;border-radius:999px;overflow:hidden}
+body.sumi .tog button{background:none;color:var(--dim)}
+body.sumi .tog button.on{background:var(--gold);color:#121212}
+body.sumi .tag,body.sumi .pp,body.sumi .gl,body.sumi .pend{border-radius:999px}
+body.sumi .who b{color:var(--text)}
+body.sumi .who .li{color:var(--gold)}
+body.sumi .rec .ci{border:0;background:#242424;border-radius:50%;color:var(--gold)}
+body.sumi .pax .pn{border-color:#3a3a3a;background:none}
+/* 日期軸、時間軸 */
+body.sumi .rail-in::before{background:var(--line);height:1px}
+body.sumi .dt::before{width:9px;height:9px;margin-left:-4.5px;top:11px;border:1px solid #555}
+body.sumi .dt.on::before{background:var(--gold);border-color:var(--gold)}
+body.sumi .dt .d{font-family:var(--disp);font-weight:500;font-size:15px}
+body.sumi .dt.on .d{color:var(--text);border-bottom:1px solid var(--gold)}
+body.sumi .dcard .art{border:0;background:none;color:var(--gold);width:52px}
+body.sumi .dcard h3{font-family:var(--disp);font-weight:500;font-size:21px;letter-spacing:.04em}
+body.sumi .dcard .k{color:var(--gold);letter-spacing:.24em}
+body.sumi .tl::before{border-left:1px solid var(--line);opacity:1}
+body.sumi .it::before{border-width:1px}
+body.sumi .spot{background:#1b1b1b;border:0;border-radius:12px;padding:11px 14px}
+body.sumi .spot .m{color:var(--dim)}
+body.sumi .close{color:var(--gold)}
+/* 車票：保留，但更素 */
+body.sumi .card.ticket{background:#ebe5d6;background-image:none;border-radius:14px}
+body.sumi .ticket .tkh{border-top:3px solid #9e3a2f;box-shadow:none}
+body.sumi .ticket .t{font-family:var(--disp);font-weight:500}
+/* 暖簾：墨藍布、金線家紋 */
+body.sumi .noren{background:linear-gradient(180deg,#252a3a,#1e2230)!important}
+body.sumi .noren::before{height:1px;background:var(--gold)}
+body.sumi .noren .mon{border-color:var(--gold);color:var(--gold);font-family:var(--disp)}
+body.sumi .noren.solo{background:linear-gradient(180deg,#30221f,#271b19)!important}
+/* 底部列 */
+body.sumi .tabbar{background:rgba(22,22,22,.92);border:1px solid #262626;box-shadow:none;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+body.sumi .tabbar button{color:#6f6a62;font-size:10px;gap:3px}
+body.sumi .tabbar button i{width:24px;height:24px;filter:none}
+body.sumi .tabbar button i img,body.sumi .tabbar button i>svg:not(.tabli){display:none}
+body.sumi .tabbar .tabli{display:block;width:22px;height:22px;stroke-width:1.5}
+body.sumi .tabbar button.on{background:none;color:var(--gold)}
+body.sumi .tabbar button.on i{transform:none;filter:none}
+/* 其他 */
+body.sumi .toast{background:#222;border:1px solid #333;border-radius:999px;color:var(--text)}
+body.sumi .sheet{background:#161616;border-top:0;border-radius:22px 22px 0 0;box-shadow:none}
+body.sumi .sheet.white{background:#fff}
+body.sumi .sheet .xx{border:0;background:#242424;border-radius:50%;display:grid;place-items:center}
+body.sumi .sheet .hd h3{font-family:var(--disp);font-weight:500;font-style:normal}
+body.sumi .fx .zan{font-weight:500}
 /* 風格切換 */
 .theme-sw{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--dim);margin-top:4px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -647,8 +776,8 @@ body.showa .fx .zan{font-family:var(--disp);font-style:normal;-webkit-text-strok
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
-<script>window.APP_VER="v2026111145"</script>
-<script src="data.js?v=2026111145"></script>
-<script src="app.js?v=2026111145"></script>
+<script>window.APP_VER="v2026111301"</script>
+<script src="data.js?v=2026111301"></script>
+<script src="app.js?v=2026111301"></script>
 </body>
 </html>

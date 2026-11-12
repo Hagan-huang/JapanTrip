@@ -1,7 +1,7 @@
 // 離線快取：沒網路時也能打開行程、航班、住宿
-const VER = "kt-v2026111145";
+const VER = "kt-v2026111301";
 const CORE = [
-  "./", "./index.html", "./data.js?v=2026111145", "./app.js?v=2026111145", "./manifest.webmanifest",
+  "./", "./index.html", "./data.js?v=2026111301", "./app.js?v=2026111301", "./manifest.webmanifest",
   "./images/cover.jpg", "./images/hero.jpg", "./images/katana.png",
   "./images/banner-home.jpg", "./images/banner-flights.jpg", "./images/banner-days.jpg", "./images/banner-prep.jpg", "./images/banner-money.jpg",
   "./images/tab-home.png", "./images/tab-flights.png", "./images/tab-days.png", "./images/tab-prep.png", "./images/tab-money.png",

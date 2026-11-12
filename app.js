@@ -82,6 +82,14 @@ function heroSVG() {
   <g stroke="#05d9e8" stroke-width=".6" opacity=".35"><line x1="0" y1="296" x2="400" y2="296"/><line x1="0" y1="305" x2="400" y2="305"/><line x1="0" y1="316" x2="400" y2="316"/></g>
 </svg>`;
 }
+// 畫面風格：墨色（預設）／昭和／霓虹
+const curTheme = () => { const t = store.get("theme2", "sumi"); return ["sumi", "showa", "neon"].includes(t) ? t : "sumi"; };
+function applyTheme(t) {
+  store.set("theme2", t);
+  document.body.classList.toggle("showa", t !== "neon");
+  document.body.classList.toggle("sumi", t === "sumi");
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === "sumi" ? "#121212" : "#07060f";
+}
 function initHero() {
   $("#tCode").textContent = T.code;
   $("#tTitle").textContent = T.title; $("#tTitle").dataset.t = T.title;
@@ -100,7 +108,7 @@ function initHero() {
   // 倒數
   const ms = new Date(T.departAt) - new Date();
   const days = Math.ceil(ms / 864e5);
-  $("#count").innerHTML = days > 0 ? `出發倒數 <b>${days}</b> 天` : days > -9 ? `旅行中 <b>DAY ${1 - days}</b>` : `旅程結束 <b>✓</b>`;
+  $("#count").innerHTML = days > 0 ? `出發倒數 <b>${days}</b> 天` : days > -9 ? `旅行中 <b>DAY ${1 - days}</b>` : `旅程結束`;
   const bd = days > 0 ? `T-${days} DAYS` : days > -9 ? `DAY ${1 - days}` : "COMPLETE";
   $$("[data-bd]").forEach(x => x.textContent = bd);
   // 雨
@@ -181,7 +189,7 @@ function renderPick() {
   if (!Acct.logged()) { el.innerHTML = joinForm("登入後，就能登記你搭哪一班，名字會出現在航班卡上。"); return; }
   const mine = flightOf()[M.me];
   el.innerHTML = `<div class="card glow" style="--c:var(--yellow)">
-    <div style="font-weight:900;margin-bottom:8px">✈ ${esc(M.me)}，你搭哪一班？</div>
+    <div style="font-weight:900;margin-bottom:8px">${li("plane")} ${esc(M.me)}，你搭哪一班？</div>
     <div class="chips">${T.flights.filter(f => !f.ret).map(f => `<button class="chip ${mine === f.id ? "on" : ""}" data-pick="${f.id}">${esc(f.date)} ${esc(f.legs.map(l => l.no || l.airline).join("→"))}</button>`).join("")}</div>
     <div class="hint">${mine ? "已登記，點別班可以更改。回程大家都一樣，不用選。" : "點一下就登記，名字會出現在那班的卡片上。"}</div></div>`;
 }
@@ -267,14 +275,14 @@ function openFlight(f) {
   L.forEach((l, k) => {
     legsHtml += `<div class="leg">
       <div class="pt"><b>${localT(l.dep, l.from)}</b><span>${esc(apName(l.from, l.fromT))} 起飛</span></div>
-      <div class="air">✈ ${esc(l.airline)} ${esc(l.no)}・飛行 ${durTxt(new Date(l.arr) - new Date(l.dep))}
+      <div class="air">${li("plane")} ${esc(l.airline)} ${esc(l.no)}・飛行 ${durTxt(new Date(l.arr) - new Date(l.dep))}
         ${l.no ? `・<a href="https://www.flightradar24.com/data/flights/${l.no.toLowerCase()}" target="_blank" rel="noopener">即時追蹤 ↗</a>` : ""}</div>
       <div class="pt"><b>${localT(l.arr, l.to)}</b><span>${esc(apName(l.to, l.toT))} 降落</span></div></div>`;
-    if (k < L.length - 1) legsHtml += `<div class="lay">⏳ 在${AP[l.to].name}轉機 ${durTxt(new Date(L[k + 1].dep) - new Date(l.arr))}${f.note ? "・" + esc(f.note.replace(/^.*?：/, "").replace(/（.*?）/g, "")) : ""}</div>`;
+    if (k < L.length - 1) legsHtml += `<div class="lay">${li("hourglass")} 在${AP[l.to].name}轉機 ${durTxt(new Date(L[k + 1].dep) - new Date(l.arr))}${f.note ? "・" + esc(f.note.replace(/^.*?：/, "").replace(/（.*?）/g, "")) : ""}</div>`;
   });
   const tzs = [...new Set(codes.map(c => AP[c].tz))];
   $("#sheet").innerHTML = `
-    <div class="hd"><div><h3>${esc(f.who)}</h3><p>${f.ret ? "1/21（四）" : esc(f.date)}・${L.map(l => esc(l.no || l.airline)).join(" → ")}</p></div><button class="xx" aria-label="關閉">✕</button></div>
+    <div class="hd"><div><h3>${esc(f.who)}</h3><p>${f.ret ? "1/21（四）" : esc(f.date)}・${L.map(l => esc(l.no || l.airline)).join(" → ")}</p></div><button class="xx" aria-label="關閉">${li("x")}</button></div>
     <div class="map">${svg}</div>
     <div class="fst" id="fst"></div><div class="fbar"><i id="fbar"></i></div>
     ${legsHtml}
@@ -291,7 +299,7 @@ function openDriver(x) {
     <div class="nm">${esc(x.name)}</div>
     ${x.zip ? `<div class="zip">${esc(x.zip)}</div>` : ""}<div class="ad">${esc(x.addr)}</div>
     ${x.note ? `<div class="nt">${esc(x.note)}</div>` : ""}
-    ${x.tel ? `<a class="tel" href="tel:${esc(x.tel)}">☎ ${esc(x.tel)}</a>` : ""}
+    ${x.tel ? `<a class="tel" href="tel:${esc(x.tel)}">${li("phone")} ${esc(x.tel)}</a>` : ""}
     <div class="row2"><a class="btn sm" href="${mapUrl(x.map || x.addr)}" target="_blank" rel="noopener">開啟地圖 ↗</a><button class="btn sm xx">關閉</button></div>
   </div>`;
   $("#modal").classList.add("open"); document.body.style.overflow = "hidden";
@@ -336,7 +344,7 @@ function animateFlight(f) {
   }
   const done = nowMs > t1;
   const days = Math.ceil((t0 - nowMs) / 864e5);
-  st.innerHTML = done ? `<span class="dot ok"></span>已抵達 ✓` : `<span class="dot warn"></span>尚未起飛・倒數 <b>${days}</b> 天・下面是飛行過程模擬`;
+  st.innerHTML = done ? `<span class="dot ok"></span>已抵達` : `<span class="dot warn"></span>尚未起飛・倒數 <b>${days}</b> 天・下面是飛行過程模擬`;
   bar.style.width = done ? "100%" : "0";
   if (done) { place(L.length - 1, 1); return; }
   // 模擬：依各段飛行時間比例跑一輪（約 6 秒），轉機時停一下
@@ -361,6 +369,49 @@ function animateFlight(f) {
 /* =========================================================
    Days
    ========================================================= */
+// 細線圖示（取代 emoji）
+const LI = {
+"plane": "<path d=\"M16 10h4a2 2 0 0 1 0 4h-4l-4 7h-3l2-7h-4l-2 2H2l2-4-2-4h3l2 2h4L9 3h3z\"/>",
+"clock": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v5l3 3\"/>",
+"phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2\"/>",
+"users": "<circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.1a4 4 0 0 1 0 7.8M21 21v-2a4 4 0 0 0-3-3.9\"/>",
+"pin": "<path d=\"M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z\"/><circle cx=\"12\" cy=\"9.5\" r=\"2.5\"/>",
+"train": "<rect x=\"5\" y=\"3\" width=\"14\" height=\"14\" rx=\"3\"/><path d=\"M5 11h14M9 21l1.5-4M15 21l-1.5-4M9 14h.01M15 14h.01\"/>",
+"alert": "<path d=\"M12 9v4M12 17h.01M10.3 3.9 2.4 17.5a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z\"/>",
+"car": "<path d=\"M5 17H4a1 1 0 0 1-1-1v-4l2-5h14l2 5v4a1 1 0 0 1-1 1h-1M3 12h18M9.5 17h5\"/><circle cx=\"7.5\" cy=\"17\" r=\"2\"/><circle cx=\"16.5\" cy=\"17\" r=\"2\"/>",
+"bowl": "<path d=\"M4 11h16a8 8 0 0 1-16 0zM9 4l1 4M14 3l-1 5\"/>",
+"ticket": "<path d=\"M15 5v2M15 11v2M15 17v2M5 5h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7a2 2 0 0 1 2-2\"/>",
+"bag": "<path d=\"M6 8h12l1 13H5zM9 8V6a3 3 0 0 1 6 0v2\"/>",
+"bed": "<path d=\"M3 18V7M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5\"/><circle cx=\"7\" cy=\"11\" r=\"1.5\"/>",
+"dots": "<path d=\"M5 12h.01M12 12h.01M19 12h.01\"/>",
+"user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M5 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1\"/>",
+"link": "<path d=\"M9 15l6-6M11 6l.5-.5a4 4 0 0 1 5.7 5.7l-.7.8M13 18l-.5.5a4 4 0 0 1-5.7-5.7l.7-.8\"/>",
+"cal": "<rect x=\"4\" y=\"5\" width=\"16\" height=\"16\" rx=\"2\"/><path d=\"M16 3v4M8 3v4M4 11h16\"/>",
+"flag": "<path d=\"M5 21V4h11l-2 4 2 4H5\"/>",
+"moon": "<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z\"/>",
+"luggage": "<rect x=\"6\" y=\"6\" width=\"12\" height=\"14\" rx=\"2\"/><path d=\"M9 6V4h6v2M10 10v6M14 10v6M8 20v1M16 20v1\"/>",
+"check": "<path d=\"M5 12l5 5L20 7\"/>",
+"checklist": "<rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><path d=\"M8 12l3 3 5-6\"/>",
+"wallet": "<path d=\"M17 8V5a1 1 0 0 0-1-1H6a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2V6M20 12v4h-4a2 2 0 0 1 0-4h4\"/>",
+"yen": "<path d=\"M7 4l5 7 5-7M12 11v9M8 13h8M8 16.5h8\"/>",
+"mobile": "<rect x=\"7\" y=\"3\" width=\"10\" height=\"18\" rx=\"2\"/><path d=\"M11 18h2\"/>",
+"x": "<path d=\"M6 6l12 12M18 6 6 18\"/>",
+"hourglass": "<path d=\"M7 3h10M7 21h10M8 3v3a4 4 0 0 0 8 0V3M8 21v-3a4 4 0 0 1 8 0v3\"/>",
+"eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>",
+"home": "<path d=\"M5 12H3l9-9 9 9h-2M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7M10 21v-5h4v5\"/>",
+"map": "<path d=\"M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3zM9 4v13M15 7v13\"/>",
+"sun": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4\"/>",
+"partly": "<path d=\"M8 3v1M3.5 5.5l.7.7M2 10h1M12.5 5.5l-.7.7M5.3 11a3 3 0 0 1 5.5-2.3\"/><path d=\"M8 20h9a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.5 1.5A2.8 2.8 0 0 0 8 20z\"/>",
+"cloud": "<path d=\"M7 18h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.5A3.3 3.3 0 0 0 7 18z\"/>",
+"fog": "<path d=\"M7 14h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.5A3.3 3.3 0 0 0 7 14z\"/><path d=\"M5 18h14M7 21h10\"/>",
+"drizzle": "<path d=\"M7 14h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.5A3.3 3.3 0 0 0 7 14z\"/><path d=\"M9 17v1M12 18v1M15 17v1\"/>",
+"rain": "<path d=\"M7 14h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.5A3.3 3.3 0 0 0 7 14z\"/><path d=\"M9 17l-1 3M13 17l-1 3M17 17l-1 3\"/>",
+"snow": "<path d=\"M7 14h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.5A3.3 3.3 0 0 0 7 14z\"/><path d=\"M8 18h.01M12 19h.01M16 18h.01M10 21h.01M14 21h.01\"/>",
+"storm": "<path d=\"M7 14h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.5A3.3 3.3 0 0 0 7 14z\"/><path d=\"M12.5 15l-2 3h3l-2 3\"/>",
+"temp": "<path d=\"M10 13.5V5a2 2 0 0 1 4 0v8.5a4 4 0 1 1-4 0zM12 9v6\"/>",
+"umbrella": "<path d=\"M3 12a9 9 0 0 1 18 0zM12 12v6a2 2 0 0 0 4 0\"/>"
+};
+const li = (n, c = "") => `<svg class="li ${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LI[n] || ""}</svg>`;
 const ICONS = {
   plane: '<path d="M4 22l32-12-8 20-6-7-6 5 1-8z"/><path d="M22 23l14-13"/>',
   plane2: '<path d="M6 30h28"/><path d="M8 24l6-2 6-8 4 1-3 6 9-3c2-1 4 0 4 1s-1 2-3 3L12 28z"/>',
@@ -387,7 +438,7 @@ if (group !== "all" && !GIDS.includes(group)) group = "kyoto";
 const itemGroups = (it, d) => it.g || d.g || GIDS;
 const visibleItems = d => group === "all" ? d.items : d.items.filter(it => itemGroups(it, d).includes(group));
 function renderGroupSel() {
-  $("#gsel").innerHTML = `<div class="lb">👀 看誰的行程</div><div class="opts">${T.groups.map(g =>
+  $("#gsel").innerHTML = `<div class="lb">${li("users")} 看誰的行程</div><div class="opts">${T.groups.map(g =>
     `<button data-g="${g.id}" class="${group === g.id ? "on" : ""}">${esc(g.name)}<small>${esc(g.desc)}</small></button>`).join("")}
     <button data-g="all" class="${group === "all" ? "on" : ""}">全部<small>所有組一起看</small></button></div>`;
   const arrive = group === "all" ? 0 : T.groups.find(g => g.id === group).arrive;
@@ -492,7 +543,7 @@ function initPrep() {
   const box = (el, key, title) => {
     const list = LISTS[key], done = list.filter(x => CHECKS[x.id]).length;
     el.innerHTML = `<h4 class="noren" style="--nc:${key === "todo" ? "#1b2b66" : "#7a1f2b"}"><span class="mon">${key === "todo" ? "支" : "買"}</span>${title}<span class="prog">${done}/${list.length}</span></h4>` +
-      (list.length ? list.map(x => `<div class="ckrow"><label><input type="checkbox" data-id="${esc(x.id)}" ${CHECKS[x.id] ? "checked" : ""}><span>${esc(x.text)}</span></label>${CHECKS[x.id] ? `<i class="hanko${x.id === window.__justChecked ? " pop" : ""}" lang="ja">済</i>` : ""}<button class="x" data-del="${key}:${esc(x.id)}" aria-label="刪除">✕</button></div>`).join("") : `<div class="empty">清單是空的</div>`) +
+      (list.length ? list.map(x => `<div class="ckrow"><label><input type="checkbox" data-id="${esc(x.id)}" ${CHECKS[x.id] ? "checked" : ""}><span>${esc(x.text)}</span></label>${CHECKS[x.id] ? `<i class="hanko${x.id === window.__justChecked ? " pop" : ""}" lang="ja">済</i>` : ""}<button class="x" data-del="${key}:${esc(x.id)}" aria-label="刪除">${li("x")}</button></div>`).join("") : `<div class="empty">清單是空的</div>`) +
       `<form class="addrow" data-add="${key}"><input class="in" maxlength="60" placeholder="新增一項…"><button class="btn sm" type="submit">＋ 加入</button></form>`;
   };
   const render = window.__renderPrep = () => { box($("#todoBox"), "todo", "待辦清單"); box($("#shopBox"), "shopping", "待買清單"); if (window.__ready) updateBanners(); };
@@ -528,22 +579,22 @@ function initPrep() {
   if (!standalone && !store.get("hideInstall", false)) {
     const ios = /iP(hone|ad|od)/.test(navigator.userAgent);
     $("#installHint").innerHTML = `<div class="card glow" style="--c:var(--cyan)"><div class="inst"><img src="images/apple-touch-icon.png" alt="">
-      <div><b>📲 加到主畫面，像 App 一樣用</b><p>${ios ? "Safari 下方點「分享」<b style='display:inline'>⬆</b> →「加入主畫面」。" : "瀏覽器選單 →「加到主畫面」或「安裝應用程式」。"}全螢幕不會被網址列擋住，沒網路時也打得開行程。</p></div>
-      <button class="x" id="hideInst" aria-label="關閉">✕</button></div></div>`;
+      <div><b>${li("mobile")} 加到主畫面，像 App 一樣用</b><p>${ios ? "Safari 下方點「分享」<b style='display:inline'>⬆</b> →「加入主畫面」。" : "瀏覽器選單 →「加到主畫面」或「安裝應用程式」。"}全螢幕不會被網址列擋住，沒網路時也打得開行程。</p></div>
+      <button class="x" id="hideInst" aria-label="關閉">${li("x")}</button></div></div>`;
     $("#hideInst").onclick = () => { store.set("hideInstall", true); $("#installHint").innerHTML = ""; };
   }
   $("#stayList").innerHTML = T.stays.map(s => `
     <div class="card glow stay" style="--c:var(--purple)">
       <span class="dd">${esc(s.date)}</span><h4>${esc(s.name)}</h4>
-      <p>📍 ${esc(s.addr)}</p><p>🚉 ${esc(s.station)}</p><p>🕒 ${esc(s.time)}</p>${s.extra ? `<p>⚠ ${esc(s.extra)}</p>` : ""}
-      <div class="mt row2"><a class="btn sm" href="${mapUrl(s.map)}" target="_blank" rel="noopener">開啟地圖 ↗</a>${s.ja ? `<button class="btn sm pink" data-taxi="s${T.stays.indexOf(s)}">🚕 給司機看</button>` : ""}</div>
+      <p>${li("pin")} ${esc(s.addr)}</p><p>${li("train")} ${esc(s.station)}</p><p>${li("clock")} ${esc(s.time)}</p>${s.extra ? `<p>${li("alert")} ${esc(s.extra)}</p>` : ""}
+      <div class="mt row2"><a class="btn sm" href="${mapUrl(s.map)}" target="_blank" rel="noopener">開啟地圖 ↗</a>${s.ja ? `<button class="btn sm pink" data-taxi="s${T.stays.indexOf(s)}">${li("car")} 給司機看</button>` : ""}</div>
     </div>`).join("");
 }
 
 /* =========================================================
    Money
    ========================================================= */
-const CATS = [["餐飲", "🍜"], ["交通", "🚃"], ["門票", "🎫"], ["購物", "🛍"], ["住宿", "🏨"], ["其他", "✦"]];
+const CATS = [["餐飲", li("bowl")], ["交通", li("train")], ["門票", li("ticket")], ["購物", li("bag")], ["住宿", li("bed")], ["其他", li("dots")]];
 const catIcon = c => (CATS.find(x => x[0] === c) || CATS[5])[1];
 const M = {
   me: store.get("me", ""),
@@ -705,7 +756,7 @@ async function sync(quiet) {
 function renderWho() {
   const w = $("#who");
   if (!Acct.logged()) { w.innerHTML = `<span>還沒登入：個人帳先存在這支手機，登入後會跟著帳號走</span>`; return; }
-  w.innerHTML = `<span>👤 <b>${esc(M.me)}</b>・資料跟著帳號同步</span><button class="btn sm dim" id="rename">改名</button><button class="btn sm dim" id="logout">登出</button>${!remote ? '<span class="pend">單機測試模式</span>' : ""}`;
+  w.innerHTML = `<span>${li("user")} <b>${esc(M.me)}</b>・資料跟著帳號同步</span><button class="btn sm dim" id="rename">改名</button><button class="btn sm dim" id="logout">登出</button>${!remote ? '<span class="pend">單機測試模式</span>' : ""}`;
 }
 
 function joinForm(msg) {
@@ -796,10 +847,10 @@ function viewMine() {
       const sub = groups[d].reduce((s, r) => s + toJ(r.mine, r.currency), 0);
       return `<div class="dayh"><span>${d ? shortDate(d) : "—"}</span><span>${fmtJ(sub)}</span></div>` + groups[d].map(r => `
         <div class="rec"><div class="ci">${catIcon(r.category)}</div>
-          <div class="rt">${r.kind === "s" ? "🔗 " : ""}${esc(r.note || r.category)}${r._pending ? '<span class="pend">待上傳</span>' : ""}
+          <div class="rt">${r.kind === "s" ? li("link") + " " : ""}${esc(r.note || r.category)}${r._pending ? '<span class="pend">待上傳</span>' : ""}
             <small>${r.kind === "s" ? `分帳・${esc(r.payer)} 付 ${fmtOrig(r.amount, r.currency)}` : "個人"}</small></div>
           <div class="ra">${fmtOrig(r.mine, r.currency)}<small>${r.currency === "JPY" ? "≈ " + fmtT(toT(r.mine, "JPY")) : "≈ " + fmtJ(toJ(r.mine, "TWD"))}</small></div>
-          ${r.kind === "p" ? `<button class="x" data-delp="${r.id}" aria-label="刪除">✕</button>` : ""}
+          ${r.kind === "p" ? `<button class="x" data-delp="${r.id}" aria-label="刪除">${li("x")}</button>` : ""}
         </div>`).join("");
     }).join("") : `<div class="empty">還沒有任何紀錄，去「記一筆」新增吧</div>`}
   </div>
@@ -850,7 +901,7 @@ function viewGroup() {
     <div class="chips">${sv.members.map(m => `<span class="chip ${m === M.me ? "on" : ""}">${esc(m)}</span>`).join("")}</div></div>
   <div class="card glow" style="--c:var(--green)">
     <div style="font-weight:700;margin-bottom:6px">結算建議</div>
-    ${st.length ? st.map(([f, t, a]) => `<div class="settle"><span>${esc(f)}</span><span>→</span><span>${esc(t)}</span><b style="margin-left:auto">${fmtJ(a)}</b><small class="hint" style="margin:0">≈ ${fmtT(a * M.rate)}</small></div>`).join("") : `<div class="empty">目前大家都不欠錢 👍</div>`}
+    ${st.length ? st.map(([f, t, a]) => `<div class="settle"><span>${esc(f)}</span><span>→</span><span>${esc(t)}</span><b style="margin-left:auto">${fmtJ(a)}</b><small class="hint" style="margin:0">≈ ${fmtT(a * M.rate)}</small></div>`).join("") : `<div class="empty">目前大家都不欠錢</div>`}
     <div class="hint">用最少的轉帳次數算出來的。台幣金額照你設定的匯率換算。</div>
   </div>
   <div class="card">
@@ -863,7 +914,7 @@ function viewGroup() {
       <div class="rt">${esc(r.note || r.category)}${r._pending ? '<span class="pend">待上傳</span>' : ""}
         <small>${r.date ? shortDate(r.date) : ""}・${esc(r.payer)} 付・分 ${Object.keys(r.split || {}).length} 人・${esc(r.createdBy)} 記</small></div>
       <div class="ra">${fmtOrig(r.amount, r.currency)}</div>
-      ${r.createdBy === M.me ? `<button class="x" data-dels="${r.id}" aria-label="刪除">✕</button>` : ""}</div>`).join("") : `<div class="empty">還沒有分帳紀錄</div>`}
+      ${r.createdBy === M.me ? `<button class="x" data-dels="${r.id}" aria-label="刪除">${li("x")}</button>` : ""}</div>`).join("") : `<div class="empty">還沒有分帳紀錄</div>`}
   </div>`;
 }
 
@@ -1096,8 +1147,8 @@ async function seedItin() {
 /* =========================================================
    主頁：日期、今日行程、下一站、天氣、匯率、進度、花費
    ========================================================= */
-const WX = { 0: ["☀️", "晴"], 1: ["🌤", "晴時多雲"], 2: ["⛅", "多雲"], 3: ["☁️", "陰"], 45: ["🌫", "霧"], 48: ["🌫", "霧"], 51: ["🌦", "毛毛雨"], 53: ["🌦", "毛毛雨"], 55: ["🌦", "毛毛雨"], 56: ["🌧", "凍雨"], 57: ["🌧", "凍雨"], 61: ["🌧", "小雨"], 63: ["🌧", "雨"], 65: ["🌧", "大雨"], 66: ["🌧", "凍雨"], 67: ["🌧", "凍雨"], 71: ["🌨", "小雪"], 73: ["🌨", "雪"], 75: ["❄️", "大雪"], 77: ["🌨", "雪"], 80: ["🌦", "陣雨"], 81: ["🌧", "陣雨"], 82: ["⛈", "大陣雨"], 85: ["🌨", "陣雪"], 86: ["❄️", "大陣雪"], 95: ["⛈", "雷雨"], 96: ["⛈", "雷雨"], 99: ["⛈", "雷雨"] };
-const wx = c => WX[c] || ["🌡", "—"];
+const WX = { 0: [li("sun"), "晴"], 1: [li("partly"), "晴時多雲"], 2: [li("partly"), "多雲"], 3: [li("cloud"), "陰"], 45: [li("fog"), "霧"], 48: [li("fog"), "霧"], 51: [li("drizzle"), "毛毛雨"], 53: [li("drizzle"), "毛毛雨"], 55: [li("drizzle"), "毛毛雨"], 56: [li("rain"), "凍雨"], 57: [li("rain"), "凍雨"], 61: [li("rain"), "小雨"], 63: [li("rain"), "雨"], 65: [li("rain"), "大雨"], 66: [li("rain"), "凍雨"], 67: [li("rain"), "凍雨"], 71: [li("snow"), "小雪"], 73: [li("snow"), "雪"], 75: [li("snow"), "大雪"], 77: [li("snow"), "雪"], 80: [li("drizzle"), "陣雨"], 81: [li("rain"), "陣雨"], 82: [li("storm"), "大陣雨"], 85: [li("snow"), "陣雪"], 86: [li("snow"), "大陣雪"], 95: [li("storm"), "雷雨"], 96: [li("storm"), "雷雨"], 99: [li("storm"), "雷雨"] };
+const wx = c => WX[c] || [li("temp"), "—"];
 const CITIES = [{ k: "kyoto", name: "京都", lat: 35.0116, lon: 135.7681 }, { k: "osaka", name: "大阪", lat: 34.6937, lon: 135.5023 }];
 const jstNow = () => new Date(Date.now() + 9 * 36e5); // 用 getUTC* 讀出日本時間
 const toMin = t => /^\d{1,2}:\d{2}$/.test(t) ? +t.split(":")[0] * 60 + +t.split(":")[1] : null;
@@ -1132,27 +1183,27 @@ function homeToday() {
     let next = "";
     if (mineF) {
       const leg = mineF.legs[0], mins = Math.round((new Date(leg.dep) - Date.now()) / 6e4);
-      next = `<div class="next"><div class="nt"><b>✈ ${esc(leg.no || leg.airline)} ${esc(AP[leg.from].name)} → ${esc(AP[mineF.legs[mineF.legs.length - 1].to].name)}</b><small>${esc(mineF.date)} ${localT(leg.dep, leg.from)} 起飛${flightOf()[M.me] ? "" : "・（還沒登記航班，先用你組別的班次）"}</small></div><div class="cd">${fmtDur(mins)}<small>後起飛</small></div></div>`;
+      next = `<div class="next"><div class="nt"><b>${li("plane")} ${esc(leg.no || leg.airline)} ${esc(AP[leg.from].name)} → ${esc(AP[mineF.legs[mineF.legs.length - 1].to].name)}</b><small>${esc(mineF.date)} ${localT(leg.dep, leg.from)} 起飛${flightOf()[M.me] ? "" : "・（還沒登記航班，先用你組別的班次）"}</small></div><div class="cd">${fmtDur(mins)}<small>後起飛</small></div></div>`;
     } else next = `<div class="next"><div class="nt"><b>還沒登記航班</b><small>到航班頁點你搭的那班</small></div><button class="btn sm yel" data-go="flights">去登記 ▸</button></div>`;
     const items = visibleItems(d).slice(0, 4);
-    return `<div class="card glow hc" style="--c:var(--pink)"><h4>⏭ 下一站</h4>${next}</div>
-      <div class="card hc"><h4>📅 第一天預覽・${esc(d.date)} 週${esc(d.dow)}・${esc(d.title)}</h4>
+    return `<div class="card glow hc" style="--c:var(--pink)"><h4>${li("pin")} 下一站</h4>${next}</div>
+      <div class="card hc"><h4>${li("cal")} 第一天預覽・${esc(d.date)} 週${esc(d.dow)}・${esc(d.title)}</h4>
       <div class="mini-tl">${items.map(it => `<div><span>${esc(it.t)}</span>${esc(it.text)}</div>`).join("")}${visibleItems(d).length > 4 ? `<div><span></span><a href="#" data-go="days">看完整行程 ▸</a></div>` : ""}</div></div>`;
   }
-  if (after) return `<div class="card hc"><h4>🎌 旅程結束</h4><div>辛苦了！記得到記帳頁看結算建議。</div></div>`;
+  if (after) return `<div class="card hc"><h4>${li("flag")} 旅程結束</h4><div>辛苦了！記得到記帳頁看結算建議。</div></div>`;
   // 旅行中：今天的行程＋下一站
   const d = T.days[idx], items = visibleItems(d), now = jstNow(), nm = now.getUTCHours() * 60 + now.getUTCMinutes();
   const timed = items.filter(it => toMin(it.t) != null).sort((a, b) => toMin(a.t) - toMin(b.t));
   const nxt = timed.find(it => toMin(it.t) >= nm), cur = [...timed].reverse().find(it => toMin(it.t) < nm);
   const nav = it => it && it.map ? `<a class="btn sm pink" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&travelmode=transit&destination=${encodeURIComponent(it.map)}">導航 ↗</a>` : "";
   const next = nxt ? `<div class="next"><div class="nt"><b>${esc(nxt.text)}</b><small>${esc(nxt.t)}${nxt.note ? "・" + esc(nxt.note) : ""}</small></div><div class="cd">${fmtDur(toMin(nxt.t) - nm)}<small>後</small></div></div><div class="row2 mt">${nav(nxt)}</div>`
-    : `<div>今天的行程都走完了，好好休息 🌙</div>`;
-  return `<div class="card glow hc" style="--c:var(--pink)"><h4>⏭ 下一站${cur ? `・現在：${esc(cur.text)}` : ""}</h4>${next}</div>
-    <div class="card hc"><h4>📅 今日行程・${esc(d.title)}</h4><div class="mini-tl">${items.map(it => { const m = toMin(it.t); const cls = m != null && m < nm && it !== cur ? "past" : it === cur ? "now" : ""; return `<div class="${cls}"><span>${esc(it.t)}</span>${esc(it.text)}</div>`; }).join("")}</div></div>`;
+    : `<div>今天的行程都走完了，好好休息</div>`;
+  return `<div class="card glow hc" style="--c:var(--pink)"><h4>${li("pin")} 下一站${cur ? `・現在：${esc(cur.text)}` : ""}</h4>${next}</div>
+    <div class="card hc"><h4>${li("cal")} 今日行程・${esc(d.title)}</h4><div class="mini-tl">${items.map(it => { const m = toMin(it.t); const cls = m != null && m < nm && it !== cur ? "past" : it === cur ? "now" : ""; return `<div class="${cls}"><span>${esc(it.t)}</span>${esc(it.text)}</div>`; }).join("")}</div></div>`;
 }
 function homeWeather() {
   const w = store.get("wx", null);
-  if (!w || !w.kyoto) return `<div class="card hc"><h4>🌤 天氣</h4><div class="hint">讀取中…</div></div>`;
+  if (!w || !w.kyoto) return `<div class="card hc"><h4>${li("partly")} 天氣</h4><div class="hint">讀取中…</div></div>`;
   const city = c => { const d = w[c.k]; if (!d || !d.current) return ""; const [ic, tx] = wx(d.current.weather_code);
     return `<div class="card hc"><h4>${c.name}</h4><div class="wx"><span class="ic">${ic}</span><div><span class="tp">${Math.round(d.current.temperature_2m)}°</span><small>${tx}・${Math.round(d.daily.temperature_2m_min[0])}°/${Math.round(d.daily.temperature_2m_max[0])}°</small></div></div>
     <div class="wxd">${d.daily.time.slice(1, 4).map((t, i) => `<div>${+t.slice(5, 7)}/${+t.slice(8)}<b>${wx(d.daily.weather_code[i + 1])[0]}</b><i>${Math.round(d.daily.temperature_2m_max[i + 1])}°</i></div>`).join("")}</div></div>`; };
@@ -1160,13 +1211,13 @@ function homeWeather() {
   const trip = [];
   T.days.forEach((dd, i) => { const iso = `2027-${dd.date.split("/").map(x => x.padStart(2, "0")).join("-")}`, c = i < 3 ? "kyoto" : "osaka", d = w[c]; const k = d && d.daily ? d.daily.time.indexOf(iso) : -1; if (k >= 0) trip.push({ dd, c, d, k }); });
   return `<div class="hrow">${CITIES.map(city).join("")}</div>
-    ${trip.length ? `<div class="card hc"><h4>🧳 旅行期間預報</h4><div class="wxd">${trip.map(x => `<div>${x.dd.date}<b>${wx(x.d.daily.weather_code[x.k])[0]}</b><i>${Math.round(x.d.daily.temperature_2m_min[x.k])}–${Math.round(x.d.daily.temperature_2m_max[x.k])}°</i><br>☂${x.d.daily.precipitation_probability_max[x.k] ?? "–"}%</div>`).join("")}</div></div>` : ""}
+    ${trip.length ? `<div class="card hc"><h4>${li("luggage")} 旅行期間預報</h4><div class="wxd">${trip.map(x => `<div>${x.dd.date}<b>${wx(x.d.daily.weather_code[x.k])[0]}</b><i>${Math.round(x.d.daily.temperature_2m_min[x.k])}–${Math.round(x.d.daily.temperature_2m_max[x.k])}°</i><br>${li("umbrella")}${x.d.daily.precipitation_probability_max[x.k] ?? "–"}%</div>`).join("")}</div></div>` : ""}
     <div class="hint" style="margin-top:-4px">天氣來源 Open-Meteo・${new Date(w.at).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })} 更新</div>`;
 }
 function homeRate() {
   const fx = store.get("fx", null);
-  if (!fx) return `<div class="card hc"><h4>💱 匯率</h4><div class="hint">讀取中…</div></div>`;
-  return `<div class="card hc fx-rate"><h4>💱 日圓匯率</h4>
+  if (!fx) return `<div class="card hc"><h4>${li("yen")} 匯率</h4><div class="hint">讀取中…</div></div>`;
+  return `<div class="card hc fx-rate"><h4>${li("yen")} 日圓匯率</h4>
     <div class="big">${fx.twd.toFixed(4)}<small>台幣 / 1 日圓</small></div>
     <div class="conv"><input class="in" id="convIn" type="number" inputmode="decimal" placeholder="輸入日圓" value="${store.get("convJ", 10000)}"><span id="convOut">≈ ${fmtT((store.get("convJ", 10000) || 0) * fx.twd)}</span></div>
     <div class="row2 mt"><button class="btn sm" id="useRate">套用到記帳匯率${Math.abs(M.rate - fx.twd) < 0.0005 ? " ✓" : ""}</button></div>
@@ -1179,11 +1230,11 @@ function homeProgress() {
   const now = jstNow(), td = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
   const today = list.filter(r => r.date === td).reduce((a, r) => a + toJ(r.mine, r.currency), 0);
   return `<div class="hrow">
-    <div class="card hc"><h4>✅ 出發前進度</h4>
+    <div class="card hc"><h4>${li("checklist")} 出發前進度</h4>
       <div class="kv"><span>待辦＋待買</span><b>${done}/${all.length}</b></div>
       <div class="bar" style="margin:4px 0 6px"><i style="width:${all.length ? done / all.length * 100 : 0}%"></i></div>
       <div class="kv"><span>我的航班</span><b>${mf ? esc(mf.date + " " + (mf.legs[0].no || "")) : `<a href="#" data-go="flights">未登記</a>`}</b></div></div>
-    <div class="card hc"><h4>💰 我的花費</h4>
+    <div class="card hc"><h4>${li("wallet")} 我的花費</h4>
       <div class="kv"><span>今天</span><b>${fmtJ(today)}</b></div>
       <div class="kv"><span>全部</span><b>${fmtJ(tot)}</b></div>
       ${M.budget ? `<div class="bar" style="margin-top:6px"><i style="width:${Math.min(100, tot * M.rate / M.budget * 100)}%"></i></div><div class="hint">預算剩 ${fmtT(Math.max(0, M.budget - tot * M.rate))}</div>` : `<div class="hint"><a href="#" data-go="money">設定預算 ▸</a></div>`}</div>
@@ -1202,7 +1253,7 @@ function renderHome() {
     ${homeWeather()}
     ${homeRate()}
     ${homeProgress()}
-    <div class="theme-sw">畫面風格<button class="btn sm ${document.body.classList.contains("showa") ? "pink" : "dim"}" data-theme="showa">昭和</button><button class="btn sm ${document.body.classList.contains("showa") ? "dim" : "pink"}" data-theme="neon">霓虹</button></div>
+    <div class="theme-sw">畫面風格${[["sumi","墨色"],["showa","昭和"],["neon","霓虹"]].map(([k,n]) => `<button class="btn sm ${curTheme() === k ? "pink" : "dim"}" data-theme="${k}">${n}</button>`).join("")}</div>
   </div>`;
   if (!homeFetched) {
     homeFetched = true;
@@ -1217,7 +1268,7 @@ function initHome() {
   const v = $("#homeView");
   v.addEventListener("click", e => {
     const g = e.target.closest("[data-go]"); if (g) { e.preventDefault(); $(`#tabbar [data-tab="${g.dataset.go}"]`).click(); return; }
-    const th = e.target.closest("[data-theme]"); if (th) { store.set("theme", th.dataset.theme); document.body.classList.toggle("showa", th.dataset.theme === "showa"); renderHome(); return; }
+    const th = e.target.closest("[data-theme]"); if (th) { applyTheme(th.dataset.theme); renderHome(); return; }
     if (e.target.id === "useRate") { const fx = store.get("fx", null); if (fx) { M.rate = +fx.twd.toFixed(4); store.set("rate", M.rate); toast("記帳匯率已更新"); renderHome(); } }
   });
   v.addEventListener("input", e => {
@@ -1261,7 +1312,8 @@ function initTabs() {
   const icons = T.TAB_ICONS || {};
   $$("#tabbar [data-ic]").forEach(i => {
     const k = i.dataset.ic;
-    i.innerHTML = icons[k] ? `<img src="${icons[k]}" alt="">` : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px currentColor)">${TAB_SVG[k]}</svg>`;
+    const TLI = { home: "home", flights: "plane", days: "map", prep: "checklist", money: "wallet" };
+    i.innerHTML = li(TLI[k], "tabli") + (icons[k] ? `<img src="${icons[k]}" alt="">` : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px currentColor)">${TAB_SVG[k]}</svg>`);
   });
   const show = (tab, push) => {
     if (!TABS.includes(tab)) tab = "home";
@@ -1301,7 +1353,7 @@ function initTabs() {
 
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 // 畫面風格：昭和（預設）或霓虹
-document.body.classList.toggle("showa", store.get("theme", "showa") === "showa");
+applyTheme(curTheme());
 initHero(); initFlights(); initDays(); initPrep(); initMoney(); initHome(); initTabs();
 window.__ready = true; updateBanners();
 loadItin();
