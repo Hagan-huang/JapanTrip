@@ -1024,7 +1024,8 @@ function applyItin(data) {
     if (r.close) it.close = String(r.close).trim();
     if (r.map) it.map = String(r.map).trim();
     if (r.tbd === true || /^(TRUE|是|✓|v|y)$/i.test(String(r.tbd).trim())) it.tbd = true;
-    const gs = String(r.g || "").split(/[、,，\s]+/).map(gId).filter(Boolean);
+    // 組別名稱本身有空格（「1/15 大阪組」），所以只用頓號、逗號分隔
+    const gs = String(r.g || "").split(/[、,，;；]+/).map(gId).filter(Boolean);
     if (gs.length) it.g = gs;
     if (r.people) it.people = String(r.people).trim();
     (byDate[date] = byDate[date] || []).push(it);
