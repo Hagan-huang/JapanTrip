@@ -399,6 +399,16 @@ function initDays() {
     `<button class="dt" data-i="${i}"><span class="d">${esc(d.date)}</span><span class="w">週${esc(d.dow)}</span></button>`).join("");
   railIn.addEventListener("click", e => { const b = e.target.closest(".dt"); if (b) selectDay(+b.dataset.i, true); });
   $("#dayView").addEventListener("click", e => { const b = e.target.closest("[data-jump]"); if (b) selectDay(+b.dataset.jump, true); });
+  // 在行程上左右滑動換天：往左滑＝下一天，往右滑＝上一天
+  let sx = 0, sy = 0, st = 0;
+  const dv = $("#dayView");
+  dv.addEventListener("touchstart", e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); }, { passive: true });
+  dv.addEventListener("touchend", e => {
+    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Date.now() - st > 700 || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+    const n = curDay + (dx < 0 ? 1 : -1);
+    if (n >= 0 && n < T.days.length) selectDay(n, true);
+  }, { passive: true });
   $("#gsel").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
     group = b.dataset.g; store.set("group", group); renderGroupSel();
@@ -467,7 +477,8 @@ function renderDay(d, delay = 0) {
       <div><div class="k">DAY ${di + 1} · ${esc(d.date)} 週${esc(d.dow)}</div><h3>${esc(away ? "還在台灣" : alt.title || d.title)}</h3>
       <div class="s">${away ? `${esc(T.days[grp.arrive].date)} 才出發` : `住 ${esc(alt.stay || d.stay)}<span class="pp">${esc(alt.people || d.people)}</span>`}</div></div>
     </div>
-    ${away ? `<div class="card away"><b>🇹🇼</b>${esc(grp.name)} ${esc(T.days[grp.arrive].date)} 才出發，這天還沒到日本<div class="mt"><button class="btn sm yel" data-jump="${grp.arrive}">看 ${esc(T.days[grp.arrive].date)} ▸</button></div></div>` : `<div class="tl">${items}</div>`}`;
+    ${away ? `<div class="card away"><b>🇹🇼</b>${esc(grp.name)} ${esc(T.days[grp.arrive].date)} 才出發，這天還沒到日本<div class="mt"><button class="btn sm yel" data-jump="${grp.arrive}">看 ${esc(T.days[grp.arrive].date)} ▸</button></div></div>` : `<div class="tl">${items}</div>`}
+    <div class="swipe-hint">← 左右滑動切換日期 →</div>`;
 }
 
 /* =========================================================
@@ -745,8 +756,9 @@ function viewAdd() {
   }
   return `<div class="card">
     <div class="tog"><button data-k="p" class="${f.kind === "p" ? "on" : ""}">個人</button><button data-k="s" class="${f.kind === "s" ? "on" : ""}">分帳</button></div>
-    <div class="fld"><span>金額</span><div class="amt"><input class="in" id="fAmt" type="number" inputmode="decimal" placeholder="0" value="${f.amt ?? ""}">
-      <select class="in" id="fCur"><option value="JPY" ${f.cur === "JPY" ? "selected" : ""}>日圓</option><option value="TWD" ${f.cur === "TWD" ? "selected" : ""}>台幣</option></select></div></div>
+    <div class="fld"><span>金額</span><div class="amt"><input class="in" id="fAmt" type="number" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" placeholder="0" value="${f.amt ?? ""}">
+      <select class="in" id="fCur"><option value="JPY" ${f.cur === "JPY" ? "selected" : ""}>日圓</option><option value="TWD" ${f.cur === "TWD" ? "selected" : ""}>台幣</option></select></div>
+      <div class="quick">${(f.cur === "TWD" ? [100, 300, 500, 1000] : [500, 1000, 3000, 5000]).map(v => `<button class="chip" data-amt="${v}">${f.cur === "TWD" ? "NT$" : "¥"}${v.toLocaleString()}</button>`).join("")}</div></div>
     <div class="fld"><span>分類</span><div class="chips">${CATS.map(([c, i]) => `<button class="chip ${f.cat === c ? "on" : ""}" data-cat="${c}">${i} ${c}</button>`).join("")}</div></div>
     <div class="fld"><span>日期</span><input class="in" id="fDate" type="date" value="${f.date || today()}"></div>
     <div class="fld"><span>備註</span><input class="in" id="fNote" maxlength="40" placeholder="例如：一蘭拉麵" value="${esc(f.note || "")}"></div>
@@ -947,6 +959,7 @@ function initMoney() {
     else if (t.dataset.sp) { readForm(); const n = t.dataset.sp; f.split = f.split.includes(n) ? f.split.filter(x => x !== n) : [...f.split, n]; f.splitTouched = true; renderMoney(); }
     else if (t.dataset.q) { readForm(); f.split = t.dataset.q === "all" ? [...sharedView().members] : []; f.splitTouched = t.dataset.q !== "all"; renderMoney(); }
     else if (t.dataset.md) { readForm(); f.mode = t.dataset.md; renderMoney(); }
+    else if (t.dataset.amt) { readForm(); f.amt = t.dataset.amt; renderMoney(); }
     else if (t.id === "fSave") saveRecord();
     else if (t.dataset.join !== undefined) doJoin(t.closest(".card"));
     else if (t.id === "gSync") sync(false);
