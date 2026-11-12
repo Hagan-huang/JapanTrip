@@ -14,7 +14,7 @@
 <title>京都・大阪 9 天 8 夜｜2027.1.13–1.21</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&family=Zen+Antique&family=RocknRoll+One&family=VT323&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#07060f; --bg2:#100c22; --panel:#130e2a; --line:#2a2150;
@@ -461,6 +461,65 @@ html,body{overflow-x:hidden;max-width:100%}
 .quick .chip{flex:1;padding:8px 0;font-family:var(--mono);font-size:13px;color:var(--yellow);border-color:rgba(249,248,113,.4)}
 .quick .chip:active{background:rgba(249,248,113,.2)}
 .swipe-hint{text-align:center;font-size:11px;color:var(--dim);margin-top:6px}
+
+/* =========================================================
+   昭和 × 賽博龐克（body.showa）
+   ========================================================= */
+.enter .play,.vhs{display:none}
+body.showa{--bg:#140f1c;--bg2:#1c1527;--panel:#211a2e;--line:#3d3050;--text:#f3e7cc;--dim:#ad9f8a;--yellow:#e9b23a;--orange:#d9663b;--green:#7fd0a0;--brick:#b8432f;--cream:#f3e7cc;--indigo:#26305e;
+  background-image:radial-gradient(ellipse at 15% -10%,#3a1630 0,transparent 55%),radial-gradient(ellipse at 110% 30%,#14304a 0,transparent 45%)}
+/* 老電視：四角暗角＋弧面＋微微閃爍的雜訊 */
+body.showa::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:998;background:radial-gradient(ellipse at 50% 50%,transparent 62%,rgba(0,0,0,.55) 100%);box-shadow:inset 0 0 60px rgba(0,0,0,.6)}
+body.showa::after{background:repeating-linear-gradient(0deg,rgba(255,240,210,.035) 0 1px,transparent 1px 3px);animation:crt 6s steps(60) infinite}
+@keyframes crt{0%,100%{opacity:1}50%{opacity:.85}52%{opacity:1}}
+/* 錄影帶時間碼 */
+body.showa .vhs{display:flex;gap:14px;position:absolute;left:16px;top:calc(14px + env(safe-area-inset-top));z-index:3;font-family:"VT323",var(--mono);font-size:22px;color:#fff;text-shadow:2px 0 rgba(255,0,80,.6),-2px 0 rgba(0,200,255,.6)}
+body.showa .vhs .rec{animation:blink 1.2s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+/* 封面標題：復古明朝＋印刷錯位 */
+body.showa .glitch{font-family:"Zen Antique","Noto Serif TC",serif;font-style:normal;font-weight:400;letter-spacing:.08em;color:var(--cream);-webkit-text-stroke:0;text-shadow:3px 2px 0 var(--brick),-2px -1px 0 rgba(5,217,232,.7),0 0 24px rgba(255,42,109,.45)}
+body.showa .code{font-family:"RocknRoll One",var(--disp);letter-spacing:.25em;color:var(--yellow);text-shadow:none}
+body.showa .count{border-color:var(--yellow);border-radius:6px;clip-path:none;background:rgba(233,178,58,.12)}
+body.showa .count b{font-family:"RocknRoll One",var(--disp)}
+/* ENTER → 錄音帶 PLAY 鍵 */
+body.showa .enter .en{display:none}
+body.showa .enter .play{display:block}
+body.showa .enter{font-family:"VT323",var(--mono);font-size:30px;letter-spacing:.2em;font-style:normal;font-weight:400;color:#1b1424;background:linear-gradient(180deg,#f6ecd4,#d9c9a3);border:0;border-radius:8px;clip-path:none;padding:8px 34px 8px 40px;box-shadow:0 5px 0 #8a7650,0 8px 18px rgba(0,0,0,.5);animation:none}
+body.showa .enter:active{transform:translateY(4px);box-shadow:0 1px 0 #8a7650}
+body.showa .enter span.play{font-family:"RocknRoll One",var(--body);font-size:11px;letter-spacing:.3em;color:var(--brick);margin-top:0}
+/* 分頁大標題 → 琺瑯招牌 */
+body.showa .bt h2{font-family:"Zen Antique","Noto Serif TC",serif;font-style:normal;font-weight:400;transform:none;color:#1b1424;background:var(--cream);padding:2px 16px 4px;border:3px solid var(--brick);border-radius:6px;box-shadow:inset 0 0 0 2px var(--cream),inset 0 0 0 4px var(--brick),3px 3px 0 rgba(0,0,0,.55);text-shadow:none;font-size:28px;letter-spacing:.12em;
+  background-image:radial-gradient(circle at 7px 7px,#8a7650 1.6px,transparent 2px),radial-gradient(circle at calc(100% - 7px) 7px,#8a7650 1.6px,transparent 2px),radial-gradient(circle at 7px calc(100% - 7px),#8a7650 1.6px,transparent 2px),radial-gradient(circle at calc(100% - 7px) calc(100% - 7px),#8a7650 1.6px,transparent 2px),radial-gradient(ellipse at 80% 90%,rgba(140,70,30,.25),transparent 40%)}
+body.showa .bt h2::after{display:none}
+body.showa .bt small{font-family:"RocknRoll One",var(--body);background:var(--yellow);color:#1b1424;transform:none;border-radius:3px;box-shadow:2px 2px 0 rgba(0,0,0,.5);letter-spacing:.2em}
+body.showa .hud{font-family:"VT323",var(--mono);font-size:15px;color:var(--cream);text-shadow:1px 0 rgba(255,0,80,.6),-1px 0 rgba(0,200,255,.6)}
+body.showa .hud b{color:var(--yellow);text-shadow:none}
+/* 卡片：80 年代動畫的硬邊色塊 */
+body.showa .card:not(.ticket){border:1.5px solid var(--line);background-image:linear-gradient(180deg,rgba(243,231,204,.05),transparent 40%),linear-gradient(160deg,var(--panel),var(--bg2))}
+body.showa .card.glow{border-color:color-mix(in srgb,var(--c,var(--cyan)) 70%,var(--cream));box-shadow:inset 0 3px 0 rgba(243,231,204,.08)}
+body.showa .card:not(.ticket)::before{background:linear-gradient(115deg,transparent 60%,rgba(243,231,204,.06) 60% 68%,transparent 68%)}
+body.showa .dcard h3{font-family:"Zen Antique","Noto Serif TC",serif;font-style:normal;font-weight:400;text-shadow:2px 1px 0 var(--brick)}
+body.showa .dcard .k,body.showa .dt .d{font-family:"RocknRoll One",var(--disp);font-style:normal}
+body.showa .dt.on .d{background:var(--brick);color:var(--cream);box-shadow:2px 2px 0 rgba(0,0,0,.5)}
+body.showa .dt.on::before{background:var(--yellow);border-color:var(--yellow);box-shadow:none}
+body.showa .rail-in::before{background:repeating-linear-gradient(90deg,var(--cream) 0 10px,transparent 10px 16px);box-shadow:none;opacity:.5;height:3px}
+body.showa .sh h2,body.showa .noren{font-family:"RocknRoll One","Noto Sans TC",sans-serif}
+body.showa .noren{--nc:var(--indigo)}
+/* 數字：錄影帶字型 */
+body.showa .fl .t,body.showa .big,body.showa .hdate .dd,body.showa .hdate .ds b,body.showa .next .cd,body.showa .wx .tp{font-family:"VT323",var(--mono);font-weight:400;letter-spacing:.04em}
+body.showa .fl .t{font-size:32px}
+body.showa .big{font-size:38px;color:var(--yellow);text-shadow:2px 0 rgba(255,0,80,.5),-2px 0 rgba(0,200,255,.5)}
+body.showa .hdate .dd{font-size:52px;color:var(--cream);text-shadow:2px 0 rgba(255,0,80,.6),-2px 0 rgba(0,200,255,.6)}
+body.showa .hdate .ds b{font-size:30px}
+body.showa .next .cd{font-size:30px;color:var(--yellow);text-shadow:none}
+/* 按鈕：昭和自動販賣機按鍵 */
+body.showa .btn{clip-path:none;border-radius:6px;border-width:0;background:linear-gradient(180deg,color-mix(in srgb,var(--c,var(--cyan)) 30%,#2a2238),color-mix(in srgb,var(--c,var(--cyan)) 14%,#1a1424));box-shadow:0 3px 0 rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.15);color:var(--cream)}
+body.showa .btn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.6)}
+body.showa .tabbar{border-color:rgba(243,231,204,.35);box-shadow:0 6px 20px rgba(0,0,0,.6),inset 0 1px 0 rgba(243,231,204,.15)}
+body.showa .tabbar button.on{background:linear-gradient(180deg,rgba(184,67,47,.55),rgba(184,67,47,.25));box-shadow:inset 0 0 0 1px rgba(243,231,204,.5)}
+body.showa .tabbar button span{font-family:"RocknRoll One","Noto Sans TC",sans-serif;font-weight:400}
+/* 風格切換 */
+.theme-sw{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--dim);margin-top:4px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -475,9 +534,10 @@ html,body{overflow-x:hidden;max-width:100%}
     <div><span class="glitch" id="tTitle"></span></div>
     <div class="range" id="tRange"></div>
     <div class="count" id="count"></div>
-    <div><button class="enter" id="enter">ENTER<span>點我進入</span></button></div>
+    <div><button class="enter" id="enter"><b class="en">ENTER</b><b class="play">▶ PLAY</b><span class="en">點我進入</span><span class="play">押して入場</span></button></div>
   </div>
   <div class="gate" id="gate"></div>
+  <div class="vhs" aria-hidden="true"><span class="rec">▶ PLAY</span><span>SP</span><span>2027.01.13</span></div>
 </div>
 
 <div class="app" id="app">
@@ -560,8 +620,8 @@ html,body{overflow-x:hidden;max-width:100%}
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
-<script>window.APP_VER="v2026111143"</script>
-<script src="data.js?v=2026111143"></script>
-<script src="app.js?v=2026111143"></script>
+<script>window.APP_VER="v2026111144"</script>
+<script src="data.js?v=2026111144"></script>
+<script src="app.js?v=2026111144"></script>
 </body>
 </html>

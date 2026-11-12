@@ -1202,6 +1202,7 @@ function renderHome() {
     ${homeWeather()}
     ${homeRate()}
     ${homeProgress()}
+    <div class="theme-sw">畫面風格<button class="btn sm ${document.body.classList.contains("showa") ? "pink" : "dim"}" data-theme="showa">昭和</button><button class="btn sm ${document.body.classList.contains("showa") ? "dim" : "pink"}" data-theme="neon">霓虹</button></div>
   </div>`;
   if (!homeFetched) {
     homeFetched = true;
@@ -1216,6 +1217,7 @@ function initHome() {
   const v = $("#homeView");
   v.addEventListener("click", e => {
     const g = e.target.closest("[data-go]"); if (g) { e.preventDefault(); $(`#tabbar [data-tab="${g.dataset.go}"]`).click(); return; }
+    const th = e.target.closest("[data-theme]"); if (th) { store.set("theme", th.dataset.theme); document.body.classList.toggle("showa", th.dataset.theme === "showa"); renderHome(); return; }
     if (e.target.id === "useRate") { const fx = store.get("fx", null); if (fx) { M.rate = +fx.twd.toFixed(4); store.set("rate", M.rate); toast("記帳匯率已更新"); renderHome(); } }
   });
   v.addEventListener("input", e => {
@@ -1298,6 +1300,8 @@ function initTabs() {
 }
 
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+// 畫面風格：昭和（預設）或霓虹
+document.body.classList.toggle("showa", store.get("theme", "showa") === "showa");
 initHero(); initFlights(); initDays(); initPrep(); initMoney(); initHome(); initTabs();
 window.__ready = true; updateBanners();
 loadItin();
