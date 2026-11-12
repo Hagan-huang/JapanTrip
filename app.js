@@ -120,7 +120,7 @@ function initHero() {
   (function loop() {
     if (visible) {
       cx.clearRect(0, 0, W, H);
-      for (const d of drops) {
+      if (!document.body.classList.contains("showa")) for (const d of drops) {
         cx.strokeStyle = `rgba(150,230,255,${d.a})`; cx.lineWidth = 1;
         cx.beginPath(); cx.moveTo(d.x, d.y); cx.lineTo(d.x - 1.5, d.y + d.l); cx.stroke();
         d.y += d.v; d.x -= .3;
