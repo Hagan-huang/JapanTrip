@@ -96,8 +96,8 @@ function list_() {
 }
 
 function join_(name, pin) {
-  name = String(name || '').trim().slice(0, 12);
-  pin = String(pin || '').trim();
+  name = String(name || '').trim().slice(0, 30);
+  pin = String(pin || '').trim().slice(0, 30);
   if (!name) return { ok: false, error: '暱稱不能空白' };
   if (pin.length < 4) return { ok: false, error: '個人密碼至少 4 個字' };
   const sh = membersSheet_(), row = findRow_(sh, name);
@@ -164,7 +164,7 @@ function setFlight_(name, flight, pin) {
 }
 
 function rename_(from, to, pin) {
-  to = String(to || '').trim().slice(0, 12);
+  to = String(to || '').trim().slice(0, 30);
   if (!to) return { ok: false, error: '暱稱不能空白' };
   const row = auth_(from, pin);
   if (!row) return { ok: false, error: '請重新登入' };

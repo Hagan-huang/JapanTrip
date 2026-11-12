@@ -693,8 +693,8 @@ function joinForm(msg) {
   return `<div class="card glow" style="--c:var(--yellow)">
     <div style="font-weight:900;margin-bottom:6px">登入／建立帳號</div>
     <div class="hint" style="margin:0 0 10px">${esc(msg || "第一次輸入就是建立帳號。")}換手機時輸入同樣的暱稱和個人密碼，你的個人帳、清單和設定都會回來。</div>
-    <div class="fld"><span>暱稱（最多 12 字）</span><input class="in jName" maxlength="12" value="${esc(M.me)}" autocomplete="username"></div>
-    <div class="fld"><span>個人密碼（4–12 字，自己記得就好）</span><input class="in jPin" type="password" maxlength="12" autocomplete="current-password"></div>
+    <div class="fld"><span>暱稱（最多 30 字）</span><input class="in jName" maxlength="30" value="${esc(M.me)}" autocomplete="username"></div>
+    <div class="fld"><span>個人密碼（4–30 字，自己記得就好）</span><input class="in jPin" type="password" maxlength="30" autocomplete="current-password"></div>
     ${remote ? `<div class="fld"><span>團體密碼</span><input class="in jKey" type="password" value="${esc(M.key)}"></div>` : `<div class="hint">共用帳本還沒設定，現在是單機測試模式。</div>`}
     <button class="btn full yel mt" data-join>登入</button>
   </div>`;
@@ -909,7 +909,7 @@ async function doJoin(root) {
 }
 
 async function doRename() {
-  const to = (prompt("新的暱稱（最多 12 字）", M.me) || "").trim().slice(0, 12);
+  const to = (prompt("新的暱稱（最多 30 字）", M.me) || "").trim().slice(0, 30);
   if (!to || to === M.me) return;
   try {
     const r = await api.post({ action: "rename", from: M.me, to, pin: Acct.pin });
