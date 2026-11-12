@@ -102,7 +102,7 @@ window.TRIP = {
         { t: "晚上", type: "note", text: "打包，準備明天搬去大阪" },
         { t: "17:55", type: "move", mode: "飛機", text: "IT212 降落關西機場 T1", g: ["osk15"] },
         { t: "18:45", type: "move", mode: "JR", text: "HARUKA 關西機場 → 京都", note: "約 80 分；機場 JR 窗口買 ICOCA & HARUKA，單程 ¥2,700", g: ["osk15"] },
-        { t: "20:15", type: "spot", text: "入住京都麗嘉皇家酒店", note: "京都站中央口走路約 7 分", close: "最晚 20:30 前入住", map: "リーガロイヤルホテル京都", g: ["osk15"] },
+        { t: "20:15", type: "spot", text: "入住京都麗嘉皇家酒店", note: "京都站中央口走路約 7 分", close: "有些方案 20:30 截止入住，晚到先通知飯店", map: "リーガロイヤルホテル京都", g: ["osk15"] },
         { t: "晚上", type: "food", text: "京都站周邊晚餐（拉麵小路、Porta 地下街）", g: ["osk15"], map: "京都駅 拉麺小路" }
       ]
     },
