@@ -106,11 +106,12 @@ function initHero() {
   // 雨
   const cv = $("#rain"), cx = cv.getContext("2d");
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  let W, H, drops = [];
+  let W, H, drops = [], flakes = [];
   const resize = () => {
     const r = devicePixelRatio || 1; W = cv.clientWidth; H = cv.clientHeight;
     cv.width = W * r; cv.height = H * r; cx.setTransform(r, 0, 0, r, 0, 0);
-    drops = Array.from({ length: Math.round(W / 6) }, () => ({ x: Math.random() * W, y: Math.random() * H, l: 8 + Math.random() * 14, v: 4 + Math.random() * 5, a: .15 + Math.random() * .35 }));
+    drops = Array.from({ length: Math.round(W / 22) }, () => ({ x: Math.random() * W, y: Math.random() * H, l: 8 + Math.random() * 14, v: 4 + Math.random() * 5, a: .1 + Math.random() * .25 }));
+    flakes = Array.from({ length: Math.round(W / 4) }, () => ({ x: Math.random() * W, y: Math.random() * H, r: .8 + Math.random() * 2.2, v: .35 + Math.random() * .9, s: Math.random() * 6.28, a: .35 + Math.random() * .55 }));
   };
   resize(); addEventListener("resize", resize);
   let visible = true;
@@ -124,6 +125,12 @@ function initHero() {
         cx.beginPath(); cx.moveTo(d.x, d.y); cx.lineTo(d.x - 1.5, d.y + d.l); cx.stroke();
         d.y += d.v; d.x -= .3;
         if (d.y > H) { d.y = -d.l; d.x = Math.random() * W; }
+      }
+      // 一月的京都會下雪：雪花慢慢飄、左右擺動
+      for (const f of flakes) {
+        f.s += .02; f.y += f.v; f.x += Math.sin(f.s) * .4 - .15;
+        cx.fillStyle = `rgba(255,255,255,${f.a})`; cx.beginPath(); cx.arc(f.x, f.y, f.r, 0, 6.283); cx.fill();
+        if (f.y > H + 4) { f.y = -4; f.x = Math.random() * W; }
       }
     }
     requestAnimationFrame(loop);
@@ -144,7 +151,8 @@ const apName = (c, t) => AP[c].name + (t ? " " + t : "");
 function flightCard(f, i) {
   const L = f.legs, a = L[0], z = L[L.length - 1];
   const total = new Date(z.arr) - new Date(a.dep);
-  return `<div class="card glow fl" style="--c:${CMAP[f.color] || "var(--cyan)"}" data-f="${i}">
+  return `<div class="card fl ticket" style="--c:${CMAP[f.color] || "var(--cyan)"}" data-f="${i}">
+    <div class="tkh"><span lang="ja">航空券</span><span>${f.ret ? "復路 RETURN" : "往路 OUTBOUND"}</span><span class="tkno">No.${String(i + 1).padStart(4, "0")}</span></div>
     <div class="top"><span>${f.ret ? "1/21（四）回程・全員" : esc(f.date) + "　去程"}</span><span>${L.map(l => esc(l.no || l.airline)).join(" → ")}</span></div>
     <div class="row">
       <div><div class="t">${localT(a.dep, a.from)}</div><div class="p">${esc(apName(a.from, a.fromT))}</div></div>
@@ -153,8 +161,8 @@ function flightCard(f, i) {
     </div>
     ${L.length > 1 ? `<div class="legs">經 ${L.slice(0, -1).map(l => AP[l.to].name).join("、")}</div>` : ""}
     ${f.note ? `<div class="nt">▸ ${esc(f.note)}</div>` : ""}
-    ${paxLine(f)}
-    <div class="go">飛行過程 ▸</div>
+    <div class="stub">${paxLine(f)}
+    <div class="go">飛行過程 ▸</div></div>
   </div>`;
 }
 let fTab = 0;
@@ -472,14 +480,14 @@ function initPrep() {
   const save = () => store.set("lists", LISTS);
   const box = (el, key, title) => {
     const list = LISTS[key], done = list.filter(x => CHECKS[x.id]).length;
-    el.innerHTML = `<h4>${title}<span class="prog">${done}/${list.length}</span></h4>` +
-      (list.length ? list.map(x => `<div class="ckrow"><label><input type="checkbox" data-id="${esc(x.id)}" ${CHECKS[x.id] ? "checked" : ""}><span>${esc(x.text)}</span></label><button class="x" data-del="${key}:${esc(x.id)}" aria-label="刪除">✕</button></div>`).join("") : `<div class="empty">清單是空的</div>`) +
+    el.innerHTML = `<h4 class="noren" style="--nc:${key === "todo" ? "#1b2b66" : "#7a1f2b"}"><span class="mon">${key === "todo" ? "支" : "買"}</span>${title}<span class="prog">${done}/${list.length}</span></h4>` +
+      (list.length ? list.map(x => `<div class="ckrow"><label><input type="checkbox" data-id="${esc(x.id)}" ${CHECKS[x.id] ? "checked" : ""}><span>${esc(x.text)}</span></label>${CHECKS[x.id] ? `<i class="hanko${x.id === window.__justChecked ? " pop" : ""}" lang="ja">済</i>` : ""}<button class="x" data-del="${key}:${esc(x.id)}" aria-label="刪除">✕</button></div>`).join("") : `<div class="empty">清單是空的</div>`) +
       `<form class="addrow" data-add="${key}"><input class="in" maxlength="60" placeholder="新增一項…"><button class="btn sm" type="submit">＋ 加入</button></form>`;
   };
   const render = window.__renderPrep = () => { box($("#todoBox"), "todo", "待辦清單"); box($("#shopBox"), "shopping", "待買清單"); if (window.__ready) updateBanners(); };
   render();
   $("#prep").addEventListener("change", e => {
-    if (e.target.dataset.id) { CHECKS[e.target.dataset.id] = e.target.checked; store.set("checks", CHECKS); render(); }
+    if (e.target.dataset.id) { CHECKS[e.target.dataset.id] = e.target.checked; window.__justChecked = e.target.checked ? e.target.dataset.id : null; store.set("checks", CHECKS); render(); window.__justChecked = null; }
   });
   $("#prep").addEventListener("submit", e => {
     const f = e.target.closest("[data-add]"); if (!f) return;
@@ -497,7 +505,7 @@ function initPrep() {
   });
   // 給司機看
   const dests = [...T.stays.filter(s => s.ja).map(s => ({ key: "s" + T.stays.indexOf(s), label: s.name, ...s.ja, map: s.map })), ...(T.taxi || []).map((t, i) => ({ key: "t" + i, map: t.name, ...t }))];
-  $("#taxiBox").innerHTML = `<div class="card glow" style="--c:var(--pink)"><h4 style="color:var(--pink);margin-bottom:4px">🚕 給司機看</h4>
+  $("#taxiBox").innerHTML = `<div class="card glow" style="--c:var(--pink)"><h4 class="noren" style="--nc:#7a1f2b"><span class="mon">車</span>給司機看</h4>
     <div class="hint" style="margin:0 0 10px">搭計程車時點一下，把手機拿給司機看日文地址</div>
     <div class="taxis">${dests.map(x => `<button class="btn" data-taxi="${x.key}">${esc(x.label)} ▸</button>`).join("")}</div></div>`;
   $("#prep").addEventListener("click", e => {
