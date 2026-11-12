@@ -1048,10 +1048,28 @@ async function loadItin() {
     const r = await (await fetch(`${T.SHEET_URL}?action=itin`)).json();
     if (!r.ok) return;
     if (!r.items || !r.items.length) { seedItin(); return; }
+    if (await applyPatches()) return; // 有新的行程修改寫進試算表，會重新讀一次
     const changed = JSON.stringify(r) !== JSON.stringify(store.get("itin", null));
     store.set("itin", r);
     if (changed && applyItin(r) && window.__ready) { renderDay(T.days[curDay], 0); updateBanners(); }
   } catch {}
+}
+// 把 data.js 裡的行程修改寫進試算表（每個 id 只寫一次；回傳 true 代表有寫入）
+async function applyPatches() {
+  if (!Acct.logged()) return false;
+  const done = store.get("patchesDone", []);
+  let wrote = false;
+  for (const p of T.ITIN_PATCHES || []) {
+    if (done.includes(p.id)) continue;
+    try {
+      const r = await api.post({ action: "patchItin", id: p.id, dates: p.dates, rows: p.rows });
+      if (!r.ok) { if (r.error === "unknown action") toast("行程有更新，但 Apps Script 還是舊版，請更新"); break; }
+      done.push(p.id); store.set("patchesDone", done);
+      if (!r.skipped) wrote = true;
+    } catch { break; }
+  }
+  if (wrote) { toast("行程已更新到試算表"); setTimeout(loadItin, 1200); }
+  return wrote;
 }
 // 試算表還沒有行程：由登入的人把網頁上的行程寫進去（只會寫一次）
 async function seedItin() {

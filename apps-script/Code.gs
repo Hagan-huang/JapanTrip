@@ -37,6 +37,7 @@ function doPost(e) {
       case 'rename': return out(rename_(b.from, b.to, b.pin));
       case 'setFlight': return out(setFlight_(b.name, b.flight, b.pin));
       case 'seedItin': return out(seedItin_(b.days, b.items));
+      case 'patchItin': return out(patchItin_(b.id, b.dates, b.rows));
       default: return out({ ok: false, error: 'unknown action' });
     }
   } finally {
@@ -241,5 +242,36 @@ function seedItin_(days, items) {
   is.setFrozenRows(1);
   [70, 60, 60, 70, 300, 260, 140, 160, 50, 150, 90].forEach((w, i) => is.setColumnWidth(i + 1, w));
   is.getRange(1, 1).setNote('日期寫成 1/13 這種格式。\n時間可以寫 09:30，或「上午」「下午」「晚上」「—」。\n組別空白＝這天的預設組別；只給某組看就填「京都組」「1/15 大阪組」「1/16 大阪組」，多組用頓號隔開。\n同一天的項目會照時間自動排序。');
+  return { ok: true };
+}
+
+// 行程修改：把指定日期的列整天換成新的（同一個 id 只會做一次）
+function patchItin_(id, dates, rows) {
+  if (!id || !Array.isArray(dates) || !Array.isArray(rows)) return { ok: false, error: '資料不完整' };
+  const props = PropertiesService.getScriptProperties();
+  const done = JSON.parse(props.getProperty('patches') || '[]');
+  if (done.indexOf(id) >= 0) return { ok: true, skipped: true };
+  const is = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ITEMS_SHEET);
+  if (!is) return { ok: false, error: '還沒有行程分頁' };
+  const v = is.getDataRange().getValues();
+  const want = dates.map(String), match = [];
+  let lastData = 1;
+  for (let i = 1; i < v.length; i++) {
+    const d = cellText_(v[i][0], 'M/d');
+    if (d) lastData = i + 1;
+    if (want.indexOf(d) >= 0) match.push(i + 1);
+  }
+  const at = match.length ? match[0] : lastData + 1;
+  for (let k = match.length - 1; k >= 0; k--) is.deleteRow(match[k]);
+  if (rows.length) {
+    if (at > is.getMaxRows()) is.insertRowsAfter(is.getMaxRows(), rows.length);
+    else is.insertRowsBefore(at, rows.length);
+    is.getRange(at, 1, rows.length, 8).setNumberFormat('@');
+    is.getRange(at, 10, rows.length, 2).setNumberFormat('@');
+    is.getRange(at, 9, rows.length, 1).insertCheckboxes();
+    is.getRange(at, 1, rows.length, ITEMS_HEAD.length).setValues(rows.map(r => ITEMS_HEAD.map((_, i) => i === 8 ? !!r[i] : (r[i] == null ? '' : String(r[i])))));
+  }
+  done.push(id);
+  props.setProperty('patches', JSON.stringify(done));
   return { ok: true };
 }
