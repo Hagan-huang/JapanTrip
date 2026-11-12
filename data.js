@@ -89,8 +89,8 @@ window.TRIP = {
     },
     {
       date: "1/15", g: ["kyoto"], dow: "五", icon: "torii2", hue: "purple",
-      title: "白鬚神社＋比叡山", stay: "京都麗嘉皇家酒店", people: "4 人",
-      alt: { osk15: { title: "抵達大阪", stay: "難波一帶（待訂）", people: "2 人" } },
+      title: "白鬚神社＋比叡山", stay: "EN HOTEL Kyoto", people: "4 人",
+      alt: { osk15: { title: "抵達關西 → 京都", stay: "京都麗嘉皇家酒店", people: "2 人" } },
       items: [
         { t: "08:00", type: "move", mode: "JR", text: "湖西線 京都 → 近江高島", note: "約 1 小時" },
         { t: "09:10", type: "move", mode: "計程車", text: "近江高島站 → 白鬚神社", note: "約 5 分，4 人剛好一台" },
@@ -101,9 +101,9 @@ window.TRIP = {
         { t: "15:30", type: "move", mode: "纜車", text: "纜車下山 → JR 回京都", note: "約 17:00 到" },
         { t: "晚上", type: "note", text: "打包，準備明天搬去大阪" },
         { t: "17:55", type: "move", mode: "飛機", text: "IT212 降落關西機場 T1", g: ["osk15"] },
-        { t: "18:45", type: "move", mode: "南海", text: "關西機場 → 難波", note: "空港急行約 45 分 ¥970；特急 Rapi:t 約 38 分 ¥1,490", g: ["osk15"] },
-        { t: "19:45", type: "note", text: "入住今晚的住處（自己訂，難波一帶）", tbd: true, g: ["osk15"] },
-        { t: "晚上", type: "food", text: "道頓堀晚餐、逛街", g: ["osk15"], map: "道頓堀" }
+        { t: "18:45", type: "move", mode: "JR", text: "HARUKA 關西機場 → 京都", note: "約 80 分；機場 JR 窗口買 ICOCA & HARUKA，單程 ¥2,700", g: ["osk15"] },
+        { t: "20:15", type: "spot", text: "入住京都麗嘉皇家酒店", note: "京都站中央口走路約 7 分", close: "最晚 20:30 前入住", map: "リーガロイヤルホテル京都", g: ["osk15"] },
+        { t: "晚上", type: "food", text: "京都站周邊晚餐（拉麵小路、Porta 地下街）", g: ["osk15"], map: "京都駅 拉麺小路" }
       ]
     },
     {
@@ -216,9 +216,9 @@ window.TRIP = {
   ],
 
   stays: [
-    { name: "EN HOTEL Kyoto", date: "1/13 – 1/15", addr: "京都市下京區西洞院通四条下ル妙伝寺町 698", station: "烏丸線「四條」、阪急「烏丸」走路約 6 分", time: "15:00 入住／10:00 退房，可寄放行李", extra: "入住要出示學生證", map: "EN HOTEL Kyoto",
+    { name: "EN HOTEL Kyoto", date: "1/13 – 1/16", addr: "京都市下京區西洞院通四条下ル妙伝寺町 698", station: "烏丸線「四條」、阪急「烏丸」走路約 6 分", time: "15:00 入住／10:00 退房，可寄放行李", extra: "入住要出示學生證", map: "EN HOTEL Kyoto",
       ja: { name: "EN HOTEL Kyoto（エン ホテル 京都）", zip: "〒600-8472", addr: "京都府京都市下京区西洞院通四条南入ル妙伝寺町698", note: "四条西洞院のバス停の近くです", tel: "" } },
-    { name: "京都麗嘉皇家酒店", date: "1/15 – 1/16", addr: "京都市下京區東堀川通塩小路下ル松明町 1", station: "JR 京都站中央口走路約 7 分；八条口有免費接駁車（約每 20 分一班，京都站發 9:10–19:10）", time: "14:00 入住／11:00 退房", extra: "", map: "リーガロイヤルホテル京都",
+    { name: "京都麗嘉皇家酒店（1/15 大阪組）", date: "1/15 – 1/16", addr: "京都市下京區東堀川通塩小路下ル松明町 1", station: "JR 京都站中央口走路約 7 分；八条口有免費接駁車（約每 20 分一班，京都站發 9:10–19:10）", time: "14:00 入住／11:00 退房", extra: "", map: "リーガロイヤルホテル京都",
       ja: { name: "リーガロイヤルホテル京都", zip: "〒600-8237", addr: "京都府京都市下京区東堀川通塩小路下ル松明町1番地", note: "京都駅から歩いて7分ほどです", tel: "075-341-1121" } },
     { name: "大阪 九条南", date: "1/16 – 1/21", addr: "大阪市西區九条南 1-5-2", station: "阪神「ドーム前」「九條」走路 3–4 分；長堀鶴見綠地線「ドーム前千代崎」約 5 分", time: "入住時間待確認", extra: "", map: "大阪市西区九条南1-5-2",
       ja: { name: "宿泊先（民泊）", zip: "〒550-0025", addr: "大阪府大阪市西区九条南1丁目5-2", note: "京セラドーム大阪の北側です", tel: "" } }
