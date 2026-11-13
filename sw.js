@@ -1,11 +1,10 @@
 // 離線快取：沒網路時也能打開行程、航班、住宿
-const VER = "kt-v2026111301";
+const VER = "kt-v2026111302";
+// 一定要先存的檔案：打開網頁、預設墨色風格會用到的
+// （橫幅、底部圖示只有昭和／霓虹風格會用到，用到時才下載並快取）
 const CORE = [
-  "./", "./index.html", "./data.js?v=2026111301", "./app.js?v=2026111301", "./manifest.webmanifest",
-  "./images/cover.jpg", "./images/hero.jpg", "./images/katana.png",
-  "./images/banner-home.jpg", "./images/banner-flights.jpg", "./images/banner-days.jpg", "./images/banner-prep.jpg", "./images/banner-money.jpg",
-  "./images/tab-home.png", "./images/tab-flights.png", "./images/tab-days.png", "./images/tab-prep.png", "./images/tab-money.png",
-  "./images/icon-192.png", "./images/apple-touch-icon.png"
+  "./", "./index.html", "./data.js?v=2026111302", "./app.js?v=2026111302", "./manifest.webmanifest",
+  "./images/cover.jpg", "./images/katana.png", "./images/icon-192.png", "./images/apple-touch-icon.png"
 ];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VER).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));

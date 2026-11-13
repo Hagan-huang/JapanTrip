@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#121212">
+<!-- 不讓搜尋引擎收錄（網頁裡有航班、住宿地址） -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="images/icon-192.png">
@@ -14,7 +18,8 @@
 <title>京都・大阪 9 天 8 夜｜2027.1.13–1.21</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&family=Zen+Antique&family=Shippori+Mincho:wght@500;600&family=VT323&display=swap" rel="stylesheet">
+<!-- 預設的墨色風格只要這兩種字型；昭和、霓虹用到的字型等切換時才載入（app.js 的 applyTheme） -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Shippori+Mincho:wght@500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#07060f; --bg2:#100c22; --panel:#130e2a; --line:#2a2150;
@@ -676,6 +681,112 @@ body.sumi .sheet .hd h3{font-family:var(--disp);font-weight:500;font-style:norma
 body.sumi .fx .zan{font-weight:500}
 /* 風格切換 */
 .theme-sw{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--dim);margin-top:4px}
+/* =========================================================
+   v2026-11-13：旅行當天模式、工具箱、動畫
+   ========================================================= */
+.nw{white-space:nowrap}
+/* 行程頁：分享鈕、當天天氣 */
+.dcard .share{margin-left:auto;align-self:flex-start;flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--line);background:none;color:var(--dim);cursor:pointer;transition:transform .15s,color .2s}
+.dcard .share:active{transform:scale(.9);color:var(--gold,var(--yellow))}
+.dcard .share .li{width:17px;height:17px}
+.dwx{font-size:12px;color:var(--dim);margin-top:4px}
+.dwx .li{width:14px;height:14px;color:var(--gold,var(--yellow))}
+/* 進行中／下一個／已經過去 */
+.nowb{display:block;margin-top:3px;font-size:10px;line-height:1.5;letter-spacing:.05em;color:var(--bg);background:var(--gold,var(--yellow));border-radius:999px;text-align:center;font-family:var(--body)}
+.nowb.nx{background:none;color:var(--gold,var(--yellow));border:1px solid currentColor}
+.it.lv-past{opacity:.42}
+.it.lv-past:active{opacity:.8}
+.it.lv-now::before{background:var(--gold,var(--yellow))!important;border-color:var(--gold,var(--yellow))!important;animation:nowdot 2s ease-in-out infinite}
+@keyframes nowdot{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--gold,var(--yellow)) 60%,transparent)}50%{box-shadow:0 0 0 7px transparent}}
+.it.lv-now .spot,.it.lv-now .mv{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gold,var(--yellow)) 55%,transparent)}
+.it.lv-now .mv{padding:6px 10px;border-radius:10px}
+.cdn{display:inline-block;margin-left:8px;padding:0 7px;border-radius:999px;font-size:10px;line-height:1.6;border:1px solid currentColor}
+.cdn.warn{color:#e2685a;animation:blink 1.4s ease-in-out infinite}
+.cdn.over{color:var(--dim)}
+@keyframes blink{50%{opacity:.45}}
+/* 會合、集合：特別標出來 */
+.it.meet .mv,.it.meet .spot{border-left:2px solid var(--gold,var(--yellow))!important;padding-left:10px}
+.it.meet .mv::before,.it.meet .n::before{content:"集合";display:inline-block;margin-right:6px;padding:0 6px;font-size:10px;line-height:1.6;border-radius:999px;background:var(--gold,var(--yellow));color:var(--bg);vertical-align:1px}
+.quiet .it,.quiet .dcard{animation:none!important}
+/* 主頁工具箱 */
+.tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tool{display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 4px 10px;border:1px solid var(--line);border-radius:14px;background:none;color:var(--text);text-decoration:none;cursor:pointer;transition:transform .15s,border-color .2s;min-width:0}
+.tool:active{transform:scale(.94);border-color:var(--gold,var(--cyan))}
+.tool .li{width:22px;height:22px;color:var(--gold,var(--cyan));stroke-width:1.4;margin-bottom:2px}
+.tool b{font-size:13px;font-weight:500}
+.tool small{font-size:10px;color:var(--dim);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 會話卡、緊急、須知 */
+.phg{font-size:11px;letter-spacing:.16em;color:var(--gold,var(--cyan));margin:16px 0 6px}
+.phr{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 2px;color:var(--text);cursor:pointer}
+.phr:active{background:rgba(255,255,255,.04)}
+.phr .ja{display:block;font-size:16px}
+.phr .zh{display:block;font-size:12px;color:var(--dim);margin-top:2px}
+.phbig{background:#fff;color:#111;padding:34px 22px calc(26px + env(safe-area-inset-bottom));min-height:56vh;display:flex;flex-direction:column}
+.phbig .ja{font-size:clamp(28px,8.5vw,40px);font-weight:700;line-height:1.45;letter-spacing:.02em;flex:1}
+.phbig .zh{font-size:14px;color:#777;margin:18px 0}
+.phbig .btn{--c:#111;color:#111!important;border:1px solid #bbb!important;background:none!important;width:auto;height:auto;margin:0;border-radius:999px;font-size:14px;padding:9px 18px;display:inline-flex}
+.sos{display:grid;gap:8px}
+.sosr{position:relative;display:block;padding:12px 44px 12px 16px;border:1px solid var(--line);border-radius:14px;color:var(--text);text-decoration:none}
+.sosr:active{border-color:var(--gold,var(--pink))}
+.sosr .t{display:block;font-size:13px;color:var(--text)}
+.sosr b{display:block;font-size:19px;font-weight:600;letter-spacing:.03em;color:var(--gold,var(--pink));font-family:var(--body);margin:1px 0}
+.sosr.big b{font-size:28px;line-height:1.2}
+.sosr small{display:block;font-size:11px;color:var(--dim)}
+.sosr .li{position:absolute;right:16px;top:50%;margin-top:-10px;width:20px;height:20px;color:var(--gold,var(--pink))}
+.sos{grid-template-columns:1fr 1fr}
+.sosr.big{padding-right:14px}.sosr.big .li{top:14px;margin-top:0;width:18px;height:18px}
+.sos .sosr:not(.big){grid-column:1/-1}
+textarea.in{resize:vertical;font-size:15px;line-height:1.5}
+.tip{padding:12px 0;border-bottom:1px solid var(--line)}
+.tip b{font-size:14px;font-weight:500;color:var(--gold,var(--cyan))}
+.tip p{font-size:13px;color:var(--text);margin-top:4px;line-height:1.65}
+/* 離線提示 */
+.offline{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));z-index:400;transform:translate(-50%,-70px);display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:#2a2622;border:1px solid #3d362c;color:#e8dcc4;font-size:12px;transition:transform .35s ease;pointer-events:none;white-space:nowrap}
+.offline.on{transform:translate(-50%,0)}
+.offline .li{width:14px;height:14px}
+/* 分享連結進來時，封面上顯示要去哪一天 */
+.jumpto{margin-top:10px;font-size:12px;color:var(--gold,var(--yellow));letter-spacing:.06em}
+
+/* ---------- 動畫 ---------- */
+/* 分頁標題下的金線畫出來 */
+body.sumi .page.on .bt h2::after{transform-origin:left;animation:drawx .7s .15s cubic-bezier(.2,.7,.2,1) backwards}
+@keyframes drawx{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+/* 時間軸的線往下長 */
+.tl::before{transform-origin:top;animation:drawy .9s .1s cubic-bezier(.3,.7,.2,1) backwards}
+.quiet .tl::before{animation:none}
+@keyframes drawy{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+/* 底部列：選中的分頁下面一個小金點 */
+.tabbar button{position:relative}
+.tabbar button::after{content:"";position:absolute;left:50%;bottom:3px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--gold,var(--pink));transform:scale(0);transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+body.sumi .tabbar button.on::after{transform:scale(1)}
+.tabbar button:active i{transform:scale(.88)}
+.tabbar button i{transition:transform .15s}
+/* 主頁卡片依序浮上來 */
+.page.on .hgrid>*{animation:in .5s ease backwards}
+.page.on .hgrid>*:nth-child(2){animation-delay:.05s}.page.on .hgrid>*:nth-child(3){animation-delay:.1s}
+.page.on .hgrid>*:nth-child(4){animation-delay:.15s}.page.on .hgrid>*:nth-child(5){animation-delay:.2s}
+.page.on .hgrid>*:nth-child(n+6){animation-delay:.25s}
+.hgrid.still>*{animation:none!important}
+/* 打勾：圓圈輕輕彈一下 */
+.ck input:checked{animation:tick .35s cubic-bezier(.3,1.6,.5,1)}
+@keyframes tick{0%{transform:scale(.6)}100%{transform:scale(1)}}
+/* 按鈕按下去的回饋 */
+.btn,.chip,.phr,.sosr{transition:transform .12s,background .2s,border-color .2s}
+.btn:active,.chip:active{transform:scale(.96)}
+
+/* ---------- 墨色封面：把霓虹插畫壓成墨色＋金，跟裡面一致 ---------- */
+body.sumi .cover #heroArt img{filter:grayscale(.92) sepia(.28) brightness(.6) contrast(1.12)}
+body.sumi .cover #heroArt{animation:kb 26s ease-in-out infinite alternate}
+@keyframes kb{from{transform:scale(1)}to{transform:scale(1.07) translate(-1%,-1.5%)}}
+body.sumi .cover::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 35%,transparent 40%,rgba(10,10,10,.55) 100%)}
+body.sumi .cover .txt{z-index:2}
+body.sumi .enter{animation:goldbreath 3.2s ease-in-out infinite}
+@keyframes goldbreath{0%,100%{box-shadow:0 0 0 0 rgba(200,165,94,0)}50%{box-shadow:0 0 22px 0 rgba(200,165,94,.28)}}
+body.sumi .bscan{display:none}
+/* 換日期的斬擊：墨色風改成金色細線 */
+body.sumi .fx .cut line{stroke:var(--gold)}
+body.sumi .fx .kat{filter:grayscale(1) sepia(.55) brightness(1.15) contrast(1.05)}
+body.sumi .fx .flash{background:radial-gradient(ellipse at 50% 50%,rgba(236,232,225,.45),rgba(200,165,94,.16) 40%,transparent 70%)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -776,8 +887,8 @@ body.sumi .fx .zan{font-weight:500}
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
-<script>window.APP_VER="v2026111301"</script>
-<script src="data.js?v=2026111301"></script>
-<script src="app.js?v=2026111301"></script>
+<script>window.APP_VER="v2026111302"</script>
+<script src="data.js?v=2026111302"></script>
+<script src="app.js?v=2026111302"></script>
 </body>
 </html>

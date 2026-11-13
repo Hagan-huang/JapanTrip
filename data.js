@@ -11,7 +11,7 @@ window.TRIP = {
   code: "KANSAI//2027",
   range: "2027.01.13 – 01.21",
   departAt: "2027-01-13T01:55:00+08:00",
-  updated: "2026-11-11",
+  updated: "2026-11-13",
 
   // 共用帳本：Google Apps Script 部署後的網址（設定步驟見 README）
   SHEET_URL: "https://script.google.com/macros/s/AKfycbwOpjTe9wPVYV4QP1Sl7c1Rf0TN4n66Gn96t36PQorv4yIU3pHELckhgYSiupUTiuOdvA/exec",
@@ -204,7 +204,14 @@ window.TRIP = {
     { id: "dinner", text: "訂 1/16 晚上 8 人晚餐" },
     { id: "firsttrain", text: "查 1/17 週日首班車時刻" },
     { id: "student", text: "帶學生證（EN HOTEL 入住要出示）" },
-    { id: "checkin", text: "GK055 網路報到" }
+    { id: "checkin", text: "GK055 網路報到" },
+    { id: "taxrefund", text: "日本 11/1 起退稅新制：買東西先付含稅價，1/21 在機場安檢前給海關看商品才退稅；退稅品先別拆、別託運，當天提早到機場" },
+    { id: "safetyapp", text: "手機裝 Safety tips（日本觀光局官方 App，地震、海嘯警報有中文推播）" },
+    { id: "sos", text: "在主頁「工具箱 → 緊急求助」填好旅平險、信用卡掛失電話" }
+  ],
+  // 已經在用網站的人，清單存在自己手機；這裡列的項目會補進去一次（刪掉後不會再出現）
+  LIST_ADDS: [
+    { id: "taxrefund", list: "todo" }, { id: "safetyapp", list: "todo" }, { id: "sos", list: "todo" }
   ],
 
   shopping: [
@@ -221,11 +228,12 @@ window.TRIP = {
   ],
 
   stays: [
-    { name: "EN HOTEL Kyoto", date: "1/13 – 1/16", addr: "京都市下京區西洞院通四条下ル妙伝寺町 698", station: "烏丸線「四條」、阪急「烏丸」走路約 6 分", time: "15:00 入住／10:00 退房，可寄放行李", extra: "入住要出示學生證", map: "EN HOTEL Kyoto",
+    // nights：住哪幾晚（主頁「回住宿」會照今天日期挑）；g：只給某組住，沒填＝所有組
+    { name: "EN HOTEL Kyoto", date: "1/13 – 1/16", nights: ["1/13", "1/14", "1/15"], g: ["kyoto"], addr: "京都市下京區西洞院通四条下ル妙伝寺町 698", station: "烏丸線「四條」、阪急「烏丸」走路約 6 分", time: "15:00 入住／10:00 退房，可寄放行李", extra: "入住要出示學生證", map: "EN HOTEL Kyoto",
       ja: { name: "EN HOTEL Kyoto（エン ホテル 京都）", zip: "〒600-8472", addr: "京都府京都市下京区西洞院通四条南入ル妙伝寺町698", note: "四条西洞院のバス停の近くです", tel: "" } },
-    { name: "京都麗嘉皇家酒店（1/15 大阪組）", date: "1/15 – 1/16", addr: "京都市下京區東堀川通塩小路下ル松明町 1", station: "JR 京都站中央口走路約 7 分；八条口有免費接駁車（約每 20 分一班，京都站發 9:10–19:10）", time: "14:00 入住／11:00 退房", extra: "", map: "リーガロイヤルホテル京都",
+    { name: "京都麗嘉皇家酒店（1/15 大阪組）", date: "1/15 – 1/16", nights: ["1/15"], g: ["osk15"], addr: "京都市下京區東堀川通塩小路下ル松明町 1", station: "JR 京都站中央口走路約 7 分；八条口有免費接駁車（約每 20 分一班，京都站發 9:10–19:10）", time: "14:00 入住／11:00 退房", extra: "", map: "リーガロイヤルホテル京都",
       ja: { name: "リーガロイヤルホテル京都", zip: "〒600-8237", addr: "京都府京都市下京区東堀川通塩小路下ル松明町1番地", note: "京都駅から歩いて7分ほどです", tel: "075-341-1121" } },
-    { name: "大阪 九条南", date: "1/16 – 1/21", addr: "大阪市西區九条南 1-5-2", station: "阪神「ドーム前」「九條」走路 3–4 分；長堀鶴見綠地線「ドーム前千代崎」約 5 分", time: "入住時間待確認", extra: "", map: "大阪市西区九条南1-5-2",
+    { name: "大阪 九条南", date: "1/16 – 1/21", nights: ["1/16", "1/17", "1/18", "1/19", "1/20"], addr: "大阪市西區九条南 1-5-2", station: "阪神「ドーム前」「九條」走路 3–4 分；長堀鶴見綠地線「ドーム前千代崎」約 5 分", time: "入住時間待確認", extra: "", map: "大阪市西区九条南1-5-2",
       ja: { name: "宿泊先（民泊）", zip: "〒550-0025", addr: "大阪府大阪市西区九条南1丁目5-2", note: "京セラドーム大阪の北側です", tel: "" } }
   ]
 };

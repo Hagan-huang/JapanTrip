@@ -17,7 +17,8 @@ function doGet(e) {
   const p = e.parameter || {};
   if (p.action === 'itin') return out(itin_()); // 行程不用密碼就能看
   if (p.key !== PASSWORD) return out({ ok: false, error: '密碼錯誤' });
-  if (p.action === 'list') return out(list_());
+  // 分帳紀錄要團體密碼（舊版網頁用 GET 帶 key；新版改走 POST）
+  if (p.action === 'list') return out(p.key === PASSWORD ? list_() : { ok: false, error: '密碼錯誤' });
   return out({ ok: false, error: 'unknown action' });
 }
 
@@ -29,11 +30,12 @@ function doPost(e) {
   lock.waitLock(10000);
   try {
     switch (b.action) {
+      case 'list': return out(list_());
       case 'join': return out(join_(b.name, b.pin));
       case 'getMe': return out(getMe_(b.name, b.pin));
       case 'saveMe': return out(saveMe_(b.name, b.pin, b.data));
-      case 'add': return out(add_(b.rec));
-      case 'delete': return out(del_(b.id, b.by));
+      case 'add': return out(add_(b.rec, b.name, b.pin));
+      case 'delete': return out(del_(b.id, b.by, b.pin));
       case 'rename': return out(rename_(b.from, b.to, b.pin));
       case 'setFlight': return out(setFlight_(b.name, b.flight, b.pin));
       case 'seedItin': return out(seedItin_(b.days, b.items));
@@ -66,6 +68,18 @@ function hash_(name, pin) {
   const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(name) + '|' + String(pin) + '|kansai2027', Utilities.Charset.UTF_8);
   return Utilities.base64Encode(raw);
 }
+// 使用者輸入的文字開頭是 = + - @ 時，試算表會當成公式執行；前面加 ' 讓它保持純文字
+function safe_(v) {
+  const s = String(v == null ? '' : v);
+  return /^[=+\-@]/.test(s) ? "'" + s : s;
+}
+// 個人密碼錯太多次就暫停 15 分鐘，避免被一直猜
+const MAX_FAIL = 8;
+function locked_(name) { return Number(CacheService.getScriptCache().get('fail:' + name) || 0) >= MAX_FAIL; }
+function fail_(name) {
+  const c = CacheService.getScriptCache(), k = 'fail:' + name;
+  c.put(k, String(Number(c.get(k) || 0) + 1), 900);
+}
 function findRow_(sh, name) {
   const v = sh.getRange(1, 1, Math.max(sh.getLastRow(), 1), 1).getValues();
   for (let i = 1; i < v.length; i++) if (String(v[i][0]) === String(name)) return i + 1;
@@ -74,8 +88,10 @@ function findRow_(sh, name) {
 // 驗證暱稱＋個人密碼，回傳成員所在列（0 代表失敗）
 function auth_(name, pin) {
   const sh = membersSheet_(), row = findRow_(sh, name);
-  if (!row || !pin) return 0;
-  return sh.getRange(row, 4).getValue() === hash_(name, pin) ? row : 0;
+  if (!row || !pin || locked_(name)) return 0;
+  if (sh.getRange(row, 4).getValue() === hash_(name, pin)) return row;
+  fail_(name);
+  return 0;
 }
 
 function members_() {
@@ -101,11 +117,13 @@ function join_(name, pin) {
   pin = String(pin || '').trim().slice(0, 30);
   if (!name) return { ok: false, error: '暱稱不能空白' };
   if (pin.length < 4) return { ok: false, error: '個人密碼至少 4 個字' };
+  if (/^[=+\-@]/.test(name)) return { ok: false, error: '暱稱開頭不能是 = + - @' };
+  if (locked_(name)) return { ok: false, error: '密碼錯太多次，請 15 分鐘後再試' };
   const sh = membersSheet_(), row = findRow_(sh, name);
   if (!row) { sh.appendRow([name, new Date(), '', hash_(name, pin)]); return { ok: true, exists: false, data: null }; }
   const saved = sh.getRange(row, 4).getValue();
   if (!saved) sh.getRange(row, 4).setValue(hash_(name, pin)); // 舊帳號第一次設定個人密碼
-  else if (saved !== hash_(name, pin)) return { ok: false, error: '個人密碼錯誤（這個暱稱已經有人用了）' };
+  else if (saved !== hash_(name, pin)) { fail_(name); return { ok: false, error: '個人密碼錯誤（這個暱稱已經有人用了）' }; }
   return { ok: true, exists: true, data: readData_(name) };
 }
 
@@ -135,16 +153,21 @@ function saveMe_(name, pin, data) {
   return { ok: true };
 }
 
-function add_(rec) {
+function add_(rec, name, pin) {
   if (!rec || !rec.id) return { ok: false, error: '資料不完整' };
+  if (!auth_(name, pin)) return { ok: false, error: '請重新登入' };
   const sh = recordsSheet_();
   const ids = sh.getRange(1, 1, sh.getLastRow(), 1).getValues().map(r => String(r[0]));
   if (ids.indexOf(String(rec.id)) >= 0) return { ok: true, dup: true }; // 離線重送時不會重複
-  sh.appendRow([rec.id, "'" + rec.date, rec.payer, rec.amount, rec.currency, rec.category, rec.note || '', JSON.stringify(rec.split || {}), rec.createdBy, rec.createdAt || Date.now(), false]);
+  const amount = Number(rec.amount);
+  if (!(amount > 0)) return { ok: false, error: '金額不正確' };
+  // 記帳人一律用登入的暱稱，不能冒用別人
+  sh.appendRow([safe_(rec.id), "'" + String(rec.date || '').slice(0, 10), safe_(rec.payer), amount, rec.currency === 'TWD' ? 'TWD' : 'JPY', safe_(rec.category), safe_(String(rec.note || '').slice(0, 200)), JSON.stringify(rec.split || {}), safe_(name), Number(rec.createdAt) || Date.now(), false]);
   return { ok: true };
 }
 
-function del_(id, by) {
+function del_(id, by, pin) {
+  if (!auth_(by, pin)) return { ok: false, error: '請重新登入' };
   const sh = recordsSheet_();
   const v = sh.getDataRange().getValues();
   for (let i = 1; i < v.length; i++) {
@@ -167,6 +190,7 @@ function setFlight_(name, flight, pin) {
 function rename_(from, to, pin) {
   to = String(to || '').trim().slice(0, 30);
   if (!to) return { ok: false, error: '暱稱不能空白' };
+  if (/^[=+\-@]/.test(to)) return { ok: false, error: '暱稱開頭不能是 = + - @' };
   const row = auth_(from, pin);
   if (!row) return { ok: false, error: '請重新登入' };
   if (members_().indexOf(to) >= 0) return { ok: false, error: '這個名字已經有人用了' };
@@ -262,6 +286,15 @@ function patchItin_(id, dates, rows) {
     if (want.indexOf(d) >= 0) match.push(i + 1);
   }
   const at = match.length ? match[0] : lastData + 1;
+  // 覆寫前先把舊的列備份到「行程備份」分頁，手動改過的內容被蓋掉也找得回來
+  if (match.length) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let bk = ss.getSheetByName('行程備份');
+    if (!bk) { bk = ss.insertSheet('行程備份'); bk.appendRow(['備份時間', '修改 id'].concat(ITEMS_HEAD)); bk.setFrozenRows(1); }
+    const stamp = Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy-MM-dd HH:mm');
+    const old = match.map(r => [stamp, id].concat(v[r - 1].slice(0, ITEMS_HEAD.length).map((x, i) => x instanceof Date ? cellText_(x, i === 1 ? 'HH:mm' : 'M/d') : x)));
+    bk.getRange(bk.getLastRow() + 1, 1, old.length, old[0].length).setValues(old);
+  }
   for (let k = match.length - 1; k >= 0; k--) is.deleteRow(match[k]);
   if (rows.length) {
     if (at > is.getMaxRows()) is.insertRowsAfter(is.getMaxRows(), rows.length);

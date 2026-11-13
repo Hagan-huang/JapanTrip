@@ -84,8 +84,10 @@ function heroSVG() {
 }
 // 畫面風格：墨色（預設）／昭和／霓虹
 const curTheme = () => { const t = store.get("theme2", "sumi"); return ["sumi", "showa", "neon"].includes(t) ? t : "sumi"; };
+const THEME_FONTS = "https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+TC:wght@900&family=JetBrains+Mono:wght@400;700&family=Zen+Antique&family=VT323&display=swap";
 function applyTheme(t) {
   store.set("theme2", t);
+  if (t !== "sumi" && !document.getElementById("themeFonts")) document.head.insertAdjacentHTML("beforeend", `<link id="themeFonts" rel="stylesheet" href="${THEME_FONTS}">`);
   document.body.classList.toggle("showa", t !== "neon");
   document.body.classList.toggle("sumi", t === "sumi");
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === "sumi" ? "#121212" : "#07060f";
@@ -122,11 +124,15 @@ function initHero() {
     flakes = Array.from({ length: Math.round(W / 4) }, () => ({ x: Math.random() * W, y: Math.random() * H, r: .8 + Math.random() * 2.2, v: .35 + Math.random() * .9, s: Math.random() * 6.28, a: .35 + Math.random() * .55 }));
   };
   resize(); addEventListener("resize", resize);
-  let visible = true;
-  new IntersectionObserver(e => visible = e[0].isIntersecting).observe(cv);
+  // 看不到封面時整個停下來（不在背景空轉，省電）
+  let visible = true, running = false;
+  const start = () => { if (visible && !running && !document.hidden) { running = true; requestAnimationFrame(loop); } };
+  new IntersectionObserver(e => { visible = e[0].isIntersecting; start(); }).observe(cv);
+  document.addEventListener("visibilitychange", start);
   window.__stopRain = () => { visible = false; };
-  (function loop() {
-    if (visible) {
+  function loop() {
+    if (!visible || document.hidden) { running = false; return; }
+    {
       cx.clearRect(0, 0, W, H);
       if (!document.body.classList.contains("showa")) for (const d of drops) {
         cx.strokeStyle = `rgba(150,230,255,${d.a})`; cx.lineWidth = 1;
@@ -142,7 +148,8 @@ function initHero() {
       }
     }
     requestAnimationFrame(loop);
-  })();
+  }
+  start();
 }
 
 /* =========================================================
@@ -302,9 +309,12 @@ function openDriver(x) {
     ${x.tel ? `<a class="tel" href="tel:${esc(x.tel)}">${li("phone")} ${esc(x.tel)}</a>` : ""}
     <div class="row2"><a class="btn sm" href="${mapUrl(x.map || x.addr)}" target="_blank" rel="noopener">開啟地圖 ↗</a><button class="btn sm xx">關閉</button></div>
   </div>`;
+  sh.scrollTop = 0;
   $("#modal").classList.add("open"); document.body.style.overflow = "hidden";
+  keepAwake(true);
 }
 function closeFlight() {
+  keepAwake(false);
   $("#sheet").classList.remove("white");
   $("#modal").classList.remove("open"); document.body.style.overflow = ""; cancelAnimationFrame(flightRAF); clearTimeout(flightRAF);
 }
@@ -409,7 +419,13 @@ const LI = {
 "snow": "<path d=\"M7 14h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.5A3.3 3.3 0 0 0 7 14z\"/><path d=\"M8 18h.01M12 19h.01M16 18h.01M10 21h.01M14 21h.01\"/>",
 "storm": "<path d=\"M7 14h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.5A3.3 3.3 0 0 0 7 14z\"/><path d=\"M12.5 15l-2 3h3l-2 3\"/>",
 "temp": "<path d=\"M10 13.5V5a2 2 0 0 1 4 0v8.5a4 4 0 1 1-4 0zM12 9v6\"/>",
-"umbrella": "<path d=\"M3 12a9 9 0 0 1 18 0zM12 12v6a2 2 0 0 0 4 0\"/>"
+"umbrella": "<path d=\"M3 12a9 9 0 0 1 18 0zM12 12v6a2 2 0 0 0 4 0\"/>",
+"share": "<path d=\"M12 3v12\"/><path d=\"M8 7l4-4 4 4\"/><path d=\"M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7\"/>",
+"chat": "<path d=\"M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z\"/><path d=\"M8.5 12h.01M12 12h.01M15.5 12h.01\"/>",
+"sos": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6\"/>",
+"info": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 11v6M12 7.5v.5\"/>",
+"nav": "<path d=\"M3 11l18-8-8 18-2-8z\"/>",
+"wifioff": "<path d=\"M2 8.5a15 15 0 0 1 6-3.6M22 8.5a15 15 0 0 0-9-3.9\"/><path d=\"M5 12a10 10 0 0 1 4-2.3M19 12a10 10 0 0 0-2.5-1.8\"/><path d=\"M8.5 15.5a5 5 0 0 1 7 0\"/><path d=\"M12 19h.01\"/><path d=\"M3 3l18 18\"/>",
 };
 const li = (n, c = "") => `<svg class="li ${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LI[n] || ""}</svg>`;
 const ICONS = {
@@ -497,7 +513,19 @@ function selectDay(i, anim) {
   requestAnimationFrame(() => fx.classList.add("go"));
   setTimeout(() => { halves.forEach(x => x.remove()); fx.remove(); slashing = false; }, 1000);
 }
-function renderDay(d, delay = 0) {
+// 導航：從目前位置搭大眾運輸過去
+const navUrl = q => "https://www.google.com/maps/dir/?api=1&travelmode=transit&destination=" + encodeURIComponent(q);
+const clockMin = s => { const m = String(s || "").match(/(\d{1,2}):(\d{2})/); return m ? +m[1] * 60 + +m[2] : null; };
+// 這天的天氣預報（16 天內才有）
+function dayWx(d) {
+  const w = store.get("wx", null); if (!w) return "";
+  const c = /京都/.test(d.stay || "") ? "kyoto" : "osaka", x = w[c];
+  const iso = `2027-${d.date.split("/").map(n => n.padStart(2, "0")).join("-")}`, k = x && x.daily ? x.daily.time.indexOf(iso) : -1;
+  if (k < 0) return "";
+  const p = x.daily.precipitation_probability_max[k];
+  return `<div class="dwx">${wx(x.daily.weather_code[k])[0]} ${wx(x.daily.weather_code[k])[1]}・${Math.round(x.daily.temperature_2m_min[k])}–${Math.round(x.daily.temperature_2m_max[k])}°${p != null ? `・${li("umbrella")}${p}%` : ""}</div>`;
+}
+function renderDay(d, delay = 0, quiet = false) {
   const c = HUE[d.hue] || "var(--cyan)";
   const grp = group === "all" ? null : T.groups.find(g => g.id === group);
   const away = grp && T.days.indexOf(d) < grp.arrive;
@@ -505,11 +533,23 @@ function renderDay(d, delay = 0) {
   const alt = (group !== "all" && d.alt && d.alt[group]) || {};
   const di = T.days.indexOf(d);
   const sorted = visibleItems(d).map((it, k) => [it, k]).sort((x, y) => (rank(x[0].t) - rank(y[0].t)) || (x[1] - y[1])).map(x => x[0]);
+  // 今天：標出「進行中」、已經過去的項目，關門時間倒數
+  const live = !away && di === myGroupDays().idx, jn = jstNow(), nm = jn.getUTCHours() * 60 + jn.getUTCMinutes();
+  const timed = live ? sorted.filter(it => toMin(it.t) != null) : [];
+  const cur = [...timed].reverse().find(it => toMin(it.t) <= nm), nxt = timed.find(it => toMin(it.t) > nm);
   const items = sorted.map((it, k) => {
+    const st = !live ? "" : it === cur ? " lv-now" : it === nxt ? " lv-next" : toMin(it.t) != null && toMin(it.t) < nm ? " lv-past" : "";
+    const meet = /會合|集合/.test(it.text) ? " meet" : "";
     const tbd = it.tbd ? '<span class="tbdl">待定</span>' : "";
     const gl = group === "all" && (it.g || d.g) && itemGroups(it, d).length < GIDS.length ? itemGroups(it, d).map(id => `<span class="gl">${esc(T.groups.find(g => g.id === id).name)}</span>`).join("") : "";
     const pp = (it.people ? `<span class="pp">${esc(it.people)}</span>` : "") + gl;
-    const close = it.close ? `<div class="close">${esc(it.close)}</div>` : "";
+    let left = "";
+    if (live && it.close && st !== " lv-past") {
+      const cm = clockMin(it.close), r = cm == null ? null : cm - nm;
+      if (r != null && r <= 0) left = `<span class="cdn over">已過</span>`;
+      else if (r != null && r <= 120) left = `<span class="cdn${r <= 45 ? " warn" : ""}">還有 ${fmtDur(r)}</span>`;
+    }
+    const close = it.close ? `<div class="close">${esc(it.close)}${left}</div>` : "";
     const note = it.note ? `<div class="sub">${esc(it.note)}</div>` : "";
     let body;
     if (it.type === "move") {
@@ -517,16 +557,20 @@ function renderDay(d, delay = 0) {
     } else if (it.type === "note") {
       body = `<div class="mv notep">${tbd}${esc(it.text)}${pp}</div>${note}${close}`;
     } else {
-      const inner = `${it.map ? '<span class="m">MAP ↗</span>' : ""}<div class="n">${tbd}${esc(it.text)}${pp}</div>${note}${close}`;
-      body = it.map ? `<a class="spot" href="${mapUrl(it.map)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="spot">${inner}</div>`;
+      // 旅行當天按下去直接導航；出發前只是看地圖
+      const inner = `${it.map ? `<span class="m">${live ? "路線" : "MAP"} ↗</span>` : ""}<div class="n">${tbd}${esc(it.text)}${pp}</div>${note}${close}`;
+      body = it.map ? `<a class="spot" href="${live ? navUrl(it.map) : mapUrl(it.map)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="spot">${inner}</div>`;
     }
-    return `<div class="it t-${it.type}${it.tbd ? " tbd" : ""}" style="animation-delay:${delay + 120 + k * 40}ms"><span class="tm">${esc(it.t)}</span>${body}</div>`;
+    const badge = st === " lv-now" ? `<span class="nowb">進行中</span>` : st === " lv-next" ? `<span class="nowb nx">下一個</span>` : "";
+    return `<div class="it t-${it.type}${it.tbd ? " tbd" : ""}${st}${meet}" style="animation-delay:${delay + 120 + k * 40}ms"><span class="tm">${esc(it.t)}${badge}</span>${body}</div>`;
   }).join("");
+  $("#dayView").classList.toggle("quiet", quiet);
   $("#dayView").innerHTML = `
     <div class="card glow dcard" style="--c:${c};animation-delay:${delay}ms;animation-fill-mode:backwards">
       <div class="art"><svg viewBox="0 0 40 40" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[d.icon] || ICONS.torii}</svg></div>
       <div><div class="k">DAY ${di + 1} · ${esc(d.date)} 週${esc(d.dow)}</div><h3>${esc(away ? "還在台灣" : alt.title || d.title)}</h3>
-      <div class="s">${away ? `${esc(T.days[grp.arrive].date)} 才出發` : `住 ${esc(alt.stay || d.stay)}<span class="pp">${esc(alt.people || d.people)}</span>`}</div></div>
+      <div class="s">${away ? `${esc(T.days[grp.arrive].date)} 才出發` : `住 ${esc(alt.stay || d.stay)}<span class="pp">${esc(alt.people || d.people)}</span>`}</div>${away ? "" : dayWx(d)}</div>
+      <button class="share" data-share="${esc(d.date)}" aria-label="分享這天的行程">${li("share")}</button>
     </div>
     ${away ? `<div class="card away"><b>🇹🇼</b>${esc(grp.name)} ${esc(T.days[grp.arrive].date)} 才出發，這天還沒到日本<div class="mt"><button class="btn sm yel" data-jump="${grp.arrive}">看 ${esc(T.days[grp.arrive].date)} ▸</button></div></div>` : `<div class="tl">${items}</div>`}
     <div class="swipe-hint">← 左右滑動切換日期 →</div>`;
@@ -537,6 +581,17 @@ function renderDay(d, delay = 0) {
    ========================================================= */
 // 待辦／待買清單：可以新增、刪除，存在這支手機
 const LISTS = store.get("lists", null) || { todo: T.todo.map(x => ({ ...x })), shopping: T.shopping.map(x => ({ ...x })) };
+// 新版補上的清單項目：每個 id 只補一次
+(() => {
+  const seen = store.get("listAdds", []); let changed = false;
+  (T.LIST_ADDS || []).forEach(a => {
+    if (seen.includes(a.id)) return; seen.push(a.id); changed = true;
+    const src = (T[a.list === "todo" ? "todo" : "shopping"] || []).find(x => x.id === a.id), dst = LISTS[a.list];
+    if (src && dst && !dst.some(x => x.id === a.id)) dst.push({ ...src });
+  });
+  // 標記成「手機有新改動」，登入同步時才不會被雲端舊清單蓋掉
+  if (changed) { store.set("listAdds", seen); store.set("lists", LISTS); store.set("dirty", true); }
+})();
 let CHECKS = store.get("checks", {});
 function initPrep() {
   const save = () => store.set("lists", LISTS);
@@ -614,9 +669,11 @@ const remote = !!T.SHEET_URL;
 // Google 程式有時要好幾秒才回應；超過 20 秒就當作失敗
 const fetchT = (url, opt = {}, ms = 20000) => { const c = new AbortController(), t = setTimeout(() => c.abort(), ms); return fetch(url, { ...opt, signal: c.signal }).finally(() => clearTimeout(t)); };
 const api = remote ? {
+  // 分帳紀錄改走 POST（密碼不會出現在網址裡）；Apps Script 還是舊版時退回 GET
   async list() {
-    const r = await fetchT(`${T.SHEET_URL}?action=list&key=${encodeURIComponent(M.key)}`);
-    return r.json();
+    const r = await this.post({ action: "list" });
+    if (r.ok || r.error !== "unknown action") return r;
+    return (await fetchT(`${T.SHEET_URL}?action=list&key=${encodeURIComponent(M.key)}`)).json();
   },
   async post(body) {
     const r = await fetchT(T.SHEET_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ name: M.me, pin: Acct.pin, ...body, key: M.key }) });
@@ -736,6 +793,8 @@ async function sync(quiet) {
       const p = M.pending[0];
       const r = await api.post(p);
       if (!r.ok && r.error === "密碼錯誤") throw new Error("密碼錯誤");
+      // 個人密碼驗證失敗：先留在手機，不要丟掉這筆
+      if (!r.ok && /重新登入|個人密碼|太多次/.test(r.error || "")) throw new Error("relogin");
       M.pending.shift(); store.set("pending", M.pending);
     }
     const data = await api.list();
@@ -748,6 +807,7 @@ async function sync(quiet) {
   } catch (e) {
     M.online = false;
     if (e.message === "密碼錯誤") { M.key = ""; store.set("key", ""); toast("團體密碼錯誤，請重新輸入"); }
+    else if (e.message === "relogin") toast("個人密碼驗證失敗，分帳先存在手機；請到記帳頁重新登入");
     else if (!quiet) toast("離線中，連上網路後會自動上傳");
   }
   renderMoney();
@@ -1154,6 +1214,7 @@ const jstNow = () => new Date(Date.now() + 9 * 36e5); // 用 getUTC* 讀出日�
 const toMin = t => /^\d{1,2}:\d{2}$/.test(t) ? +t.split(":")[0] * 60 + +t.split(":")[1] : null;
 const fmtDur = m => m >= 1440 ? `${Math.floor(m / 1440)} 天 ${Math.floor(m % 1440 / 60)} 時` : m >= 60 ? `${Math.floor(m / 60)} 小時 ${m % 60} 分` : `${m} 分`;
 let homeTimer = 0, homeFetched = false;
+const homeFail = {};
 
 async function fetchWeather() {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${CITIES.map(c => c.lat).join(",")}&longitude=${CITIES.map(c => c.lon).join(",")}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FTokyo&forecast_days=16`;
@@ -1183,7 +1244,7 @@ function homeToday() {
     let next = "";
     if (mineF) {
       const leg = mineF.legs[0], mins = Math.round((new Date(leg.dep) - Date.now()) / 6e4);
-      next = `<div class="next"><div class="nt"><b>${li("plane")} ${esc(leg.no || leg.airline)} ${esc(AP[leg.from].name)} → ${esc(AP[mineF.legs[mineF.legs.length - 1].to].name)}</b><small>${esc(mineF.date)} ${localT(leg.dep, leg.from)} 起飛${flightOf()[M.me] ? "" : "・（還沒登記航班，先用你組別的班次）"}</small></div><div class="cd">${fmtDur(mins)}<small>後起飛</small></div></div>`;
+      next = `<div class="next"><div class="nt"><b>${li("plane")} <span class="nw">${esc(leg.no || leg.airline)}</span> <span class="nw">${esc(AP[leg.from].name)} → ${esc(AP[mineF.legs[mineF.legs.length - 1].to].name)}</span></b><small>${esc(mineF.date)} ${localT(leg.dep, leg.from)} 起飛${flightOf()[M.me] ? "" : "・（還沒登記航班，先用你組別的班次）"}</small></div><div class="cd">${fmtDur(mins)}<small>後起飛</small></div></div>`;
     } else next = `<div class="next"><div class="nt"><b>還沒登記航班</b><small>到航班頁點你搭的那班</small></div><button class="btn sm yel" data-go="flights">去登記 ▸</button></div>`;
     const items = visibleItems(d).slice(0, 4);
     return `<div class="card glow hc" style="--c:var(--pink)"><h4>${li("pin")} 下一站</h4>${next}</div>
@@ -1203,7 +1264,7 @@ function homeToday() {
 }
 function homeWeather() {
   const w = store.get("wx", null);
-  if (!w || !w.kyoto) return `<div class="card hc"><h4>${li("partly")} 天氣</h4><div class="hint">讀取中…</div></div>`;
+  if (!w || !w.kyoto) return `<div class="card hc"><h4>${li("partly")} 天氣</h4><div class="hint">${homeFail.wx ? "目前連不上天氣服務，等一下再看" : "讀取中…"}</div></div>`;
   const city = c => { const d = w[c.k]; if (!d || !d.current) return ""; const [ic, tx] = wx(d.current.weather_code);
     return `<div class="card hc"><h4>${c.name}</h4><div class="wx"><span class="ic">${ic}</span><div><span class="tp">${Math.round(d.current.temperature_2m)}°</span><small>${tx}・${Math.round(d.daily.temperature_2m_min[0])}°/${Math.round(d.daily.temperature_2m_max[0])}°</small></div></div>
     <div class="wxd">${d.daily.time.slice(1, 4).map((t, i) => `<div>${+t.slice(5, 7)}/${+t.slice(8)}<b>${wx(d.daily.weather_code[i + 1])[0]}</b><i>${Math.round(d.daily.temperature_2m_max[i + 1])}°</i></div>`).join("")}</div></div>`; };
@@ -1216,7 +1277,7 @@ function homeWeather() {
 }
 function homeRate() {
   const fx = store.get("fx", null);
-  if (!fx) return `<div class="card hc"><h4>${li("yen")} 匯率</h4><div class="hint">讀取中…</div></div>`;
+  if (!fx) return `<div class="card hc"><h4>${li("yen")} 匯率</h4><div class="hint">${homeFail.fx ? "目前連不上匯率服務，記帳先用自訂匯率" : "讀取中…"}</div></div>`;
   return `<div class="card hc fx-rate"><h4>${li("yen")} 日圓匯率</h4>
     <div class="big">${fx.twd.toFixed(4)}<small>台幣 / 1 日圓</small></div>
     <div class="conv"><input class="in" id="convIn" type="number" inputmode="decimal" placeholder="輸入日圓" value="${store.get("convJ", 10000)}"><span id="convOut">≈ ${fmtT((store.get("convJ", 10000) || 0) * fx.twd)}</span></div>
@@ -1240,16 +1301,17 @@ function homeProgress() {
       ${M.budget ? `<div class="bar" style="margin-top:6px"><i style="width:${Math.min(100, tot * M.rate / M.budget * 100)}%"></i></div><div class="hint">預算剩 ${fmtT(Math.max(0, M.budget - tot * M.rate))}</div>` : `<div class="hint"><a href="#" data-go="money">設定預算 ▸</a></div>`}</div>
   </div>`;
 }
-function renderHome() {
+function renderHome(animate) {
   const v = $("#homeView"); if (!v) return;
   const now = jstNow(), tw = new Date(Date.now() + 8 * 36e5);
   const W = "日一二三四五六";
   const days = Math.ceil((new Date(T.departAt) - Date.now()) / 864e5);
   const { idx } = myGroupDays();
-  v.innerHTML = `<div class="hgrid">
+  v.innerHTML = `<div class="hgrid${animate === true ? "" : " still"}">
     <div class="card glow hc"><div class="hdate"><div><div class="dd">${tw.getUTCMonth() + 1}/${tw.getUTCDate()}</div><div class="dw">週${W[tw.getUTCDay()]}・${String(tw.getUTCHours()).padStart(2, "0")}:${String(tw.getUTCMinutes()).padStart(2, "0")} 台灣</div></div>
       <div class="ds">${idx >= 0 ? `旅行第<b>DAY ${idx + 1}</b>` : days > 0 ? `出發倒數<b>${days} 天</b>` : `旅程<b>完成</b>`}<span>日本 ${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}</span></div></div></div>
     ${homeToday()}
+    ${homeTools()}
     ${homeWeather()}
     ${homeRate()}
     ${homeProgress()}
@@ -1258,8 +1320,8 @@ function renderHome() {
   if (!homeFetched) {
     homeFetched = true;
     const w = store.get("wx", null), fx = store.get("fx", null);
-    if (!w || Date.now() - w.at > 30 * 6e4) fetchWeather().then(renderHome).catch(() => {});
-    if (!fx || Date.now() - fx.at > 6 * 36e5) fetchRate().then(renderHome).catch(() => {});
+    if (!w || Date.now() - w.at > 30 * 6e4) fetchWeather().then(() => renderHome()).catch(() => { homeFail.wx = true; renderHome(); });
+    if (!fx || Date.now() - fx.at > 6 * 36e5) fetchRate().then(() => renderHome()).catch(() => { homeFail.fx = true; renderHome(); });
   }
   clearTimeout(homeTimer);
   homeTimer = setTimeout(() => { if ($("#home").classList.contains("on")) renderHome(); }, 60000);
@@ -1276,6 +1338,164 @@ function initHome() {
     const fx = store.get("fx", null), j = parseFloat(e.target.value) || 0; store.set("convJ", j);
     if (fx) $("#convOut").textContent = "≈ " + fmtT(j * fx.twd);
   });
+}
+
+/* =========================================================
+   工具箱：回住宿、給司機看、日文會話卡、緊急求助、旅遊須知
+   全部不用網路（除了導航本身）
+   ========================================================= */
+// 今晚住哪：照日本時間（凌晨 5 點前算前一晚）和組別挑
+function stayTonight() {
+  const t = new Date(jstNow().getTime() - 5 * 36e5), date = `${t.getUTCMonth() + 1}/${t.getUTCDate()}`;
+  const g = group === "all" ? "kyoto" : group;
+  const mine = T.stays.filter(s => !s.g || s.g.includes(g));
+  const hit = mine.find(s => (s.nights || []).includes(date));
+  if (hit) return hit;
+  // 出發前：第一間；旅程最後一天（退房日）或結束後：最後一間
+  const before = Date.now() < Date.parse(T.departAt);
+  return before ? (mine[0] || T.stays[0]) : (mine[mine.length - 1] || T.stays[T.stays.length - 1]);
+}
+const stayDriver = s => ({ ...(s.ja || { name: s.name, addr: s.addr }), map: s.map });
+// 螢幕恆亮：給司機、店員看的時候不要自己變暗
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && "wakeLock" in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => wakeLock = null); }
+    else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch {}
+}
+function openSheet(html, white) {
+  const sh = $("#sheet"); sh.classList.toggle("white", !!white); sh.innerHTML = html;
+  sh.scrollTop = 0;
+  $("#modal").classList.add("open"); document.body.style.overflow = "hidden";
+}
+const sheetHead = (title, sub) => `<div class="hd"><div><h3>${title}</h3>${sub ? `<p>${sub}</p>` : ""}</div><button class="xx" aria-label="關閉">${li("x")}</button></div>`;
+
+// ---- 日文會話卡：點一句會放大，拿給店員看 ----
+const PHRASES = [
+  ["吃飯", [
+    ["8 位，沒有訂位", "8人です。予約はしていません。"],
+    ["我們有訂位", "予約しています。名前は＿＿です。"],
+    ["可以分開結帳嗎？", "お会計は別々にできますか？"],
+    ["可以刷卡嗎？", "カードは使えますか？"],
+    ["我要這個（指菜單）", "これをください。"],
+    ["推薦什麼？", "おすすめは何ですか？"],
+    ["我對＿＿過敏", "＿＿アレルギーがあります。抜いてもらえますか？"],
+    ["可以外帶嗎？", "持ち帰りできますか？"]
+  ]],
+  ["購物", [
+    ["可以辦退稅嗎？我有護照", "免税の手続きはできますか？パスポートがあります。"],
+    ["不用袋子", "袋はいりません。"],
+    ["有別的顏色／尺寸嗎？", "ほかの色（サイズ）はありますか？"],
+    ["可以試穿嗎？", "試着してもいいですか？"]
+  ]],
+  ["交通、住宿", [
+    ["＿＿站在哪裡？", "＿＿駅はどこですか？"],
+    ["這班車有到＿＿嗎？", "この電車は＿＿に行きますか？"],
+    ["可以寄放行李嗎？", "荷物を預かってもらえますか？"],
+    ["廁所在哪裡？", "トイレはどこですか？"],
+    ["請幫我叫計程車（2 台）", "タクシーを2台呼んでもらえますか？"]
+  ]],
+  ["緊急", [
+    ["請幫幫我", "助けてください。"],
+    ["我身體不舒服", "気分が悪いです。"],
+    ["請帶我去醫院", "病院に連れて行ってください。"],
+    ["我的護照（錢包）不見了", "パスポート（財布）をなくしました。"],
+    ["請叫救護車", "救急車を呼んでください。"]
+  ]]
+];
+function openPhrases() {
+  openSheet(sheetHead(`${li("chat")} 日文會話卡`, "點一句會放大，直接拿給店員看；＿＿ 的地方用手指給他看") +
+    PHRASES.map(([g, list], gi) => `<div class="phg">${esc(g)}</div>` + list.map(([zh, ja], i) =>
+      `<button class="phr" data-ph="${gi}:${i}"><span class="ja" lang="ja">${esc(ja)}</span><span class="zh">${esc(zh)}</span></button>`).join("")).join(""));
+}
+function showPhrase(gi, i) {
+  const [zh, ja] = PHRASES[gi][1][i];
+  openSheet(`<div class="phbig"><div class="ja" lang="ja">${esc(ja)}</div><div class="zh">${esc(zh)}</div>
+    <div class="row2"><button class="btn" data-tool="phrases">‹ 回列表</button><button class="btn xx">關閉</button></div></div>`, true);
+  keepAwake(true);
+}
+
+// ---- 緊急求助（號碼查自外交部領務局、日本觀光局，2026-11）----
+const SOS = [
+  ["110", "警察", "遇到偷竊、搶劫、事故"],
+  ["119", "救護車・消防", "受傷、急病、火災"],
+  ["050-3816-2787", "日本觀光局旅客熱線", "24 小時，有中文；生病、意外、災害都可以問"],
+  ["090-8794-4568", "駐大阪辦事處 急難救助", "護照遺失、被捕、重大意外才打（電話會錄音）"],
+  ["06-6227-8623", "駐大阪辦事處 辦公室", "上班時間；一般領務問題"],
+  ["+886-800-085-095", "外交部 旅外急難救助專線", "從日本撥回台灣（要付國際電話費）"]
+];
+function openSos() {
+  const s = stayTonight(), my = store.get("sosNote", "");
+  openSheet(sheetHead(`${li("sos")} 緊急求助`, "點號碼直接撥打；沒網路也看得到") +
+    `<div class="sos">${SOS.map(([n, t, d], i) => `<a class="sosr${i < 2 ? " big" : ""}" href="tel:${n.replace(/[^\d+]/g, "")}"><span class="t">${esc(t)}</span><b>${esc(n)}</b><small>${esc(d)}</small>${li("phone")}</a>`).join("")}</div>
+    <div class="phg">今晚住宿</div>
+    <div class="card"><b>${esc(s.name)}</b><div class="hint">${esc(s.addr)}</div>${s.ja && s.ja.tel ? `<a class="btn sm mt" href="tel:${esc(s.ja.tel.replace(/[^\d+]/g, ""))}">${li("phone")} ${esc(s.ja.tel)}</a>` : `<div class="hint">（住宿電話還沒填）</div>`}</div>
+    <div class="phg">我的緊急聯絡（只存在這支手機）</div>
+    <textarea class="in" id="sosNote" rows="3" maxlength="300" placeholder="例如：旅平險理賠 0800-…、信用卡掛失 …、家人電話">${esc(my)}</textarea>
+    <div class="hint">地震、海嘯時：手機裝「Safety tips」App（日本觀光局官方）會有中文警報；聽從車站、飯店人員指示。</div>`);
+}
+const TIPS = [
+  ["退稅新制", "2026/11/1 起：店裡先付含稅價，出境時在機場「安檢前」的海關櫃台出示商品才退稅。單店同日滿 ¥5,000（未稅）才能退；退稅品先別吃、別拆、別託運。1/21 要多留 30 分鐘。"],
+  ["現金", "寺社門票、小店、錢湯常常只收現金；每人身上隨時帶 ¥10,000 左右。7-11、全家的 ATM 可以用台灣金融卡領日圓（先開通跨國提款）。"],
+  ["ICOCA", "iPhone 可以把 ICOCA 加進 Apple 錢包，用 Apple Pay 儲值；進出站碰一下就好，不用打開 App。"],
+  ["搭車", "車廂裡不講電話、背包放前面。手扶梯：大阪習慣站右邊、京都多半站左邊，看前面的人站哪邊就對了。"],
+  ["垃圾", "路上幾乎沒有垃圾桶，自己帶一個塑膠袋；便利商店門口有分類垃圾桶。"],
+  ["末班車", "末班電車大多在 23:30–0:30 之間，週末、深夜注意時間。8 人搭計程車要分 2 台（一台最多 4 人）。"],
+  ["寺社", "很多寺社、庭園 16:00–17:00 就停止入場；一月 17:10 左右天黑，戶外行程排白天。"],
+  ["小費", "日本不用給小費；餐廳結帳多半在門口櫃台，不是在桌上。"]
+];
+function openTips() {
+  openSheet(sheetHead(`${li("info")} 旅遊須知`, "出發前看一次，在當地忘了再打開") +
+    TIPS.map(([t, d]) => `<div class="tip"><b>${esc(t)}</b><p>${esc(d)}</p></div>`).join(""));
+}
+// ---- 分享某一天：傳到 LINE 群組，對方點開就是那天 ----
+async function shareDay(date) {
+  const d = T.days.find(x => x.date === date); if (!d) return;
+  const url = `${location.origin}${location.pathname}#d=${date}`;
+  const text = `${T.title}｜${d.date} 週${d.dow}・${d.title}`;
+  try {
+    if (navigator.share) { await navigator.share({ title: text, text, url }); return; }
+    await navigator.clipboard.writeText(`${text}\n${url}`); toast("連結已複製，貼到群組就好");
+  } catch (e) { if (e && e.name !== "AbortError") toast("沒辦法分享，請手動複製網址"); }
+}
+function homeTools() {
+  const s = stayTonight();
+  return `<div class="card hc tools"><h4>${li("dots")} 工具箱</h4><div class="tgrid">
+    <a class="tool" href="${navUrl((s.ja && s.ja.addr) || s.map)}" target="_blank" rel="noopener">${li("home")}<b>回住宿</b><small>${esc(s.name.replace(/（.*?）/, ""))}</small></a>
+    <button class="tool" data-tool="driver">${li("car")}<b>給司機看</b><small>今晚住宿地址</small></button>
+    <button class="tool" data-tool="phrases">${li("chat")}<b>日文會話</b><small>點了拿給店員看</small></button>
+    <button class="tool" data-tool="sos">${li("sos")}<b>緊急求助</b><small>110・119・辦事處</small></button>
+    <button class="tool" data-tool="tips">${li("info")}<b>旅遊須知</b><small>退稅、現金、搭車</small></button>
+    <button class="tool" data-tool="share">${li("share")}<b>分享行程</b><small>傳到群組</small></button>
+  </div></div>`;
+}
+function initTools() {
+  document.addEventListener("click", e => {
+    const t = e.target.closest("[data-tool]");
+    if (t) {
+      const k = t.dataset.tool;
+      if (k === "driver") { openDriver(stayDriver(stayTonight())); return; }
+      if (k === "phrases") { keepAwake(false); openPhrases(); return; }
+      if (k === "sos") { openSos(); return; }
+      if (k === "tips") { openTips(); return; }
+      if (k === "share") { const { idx } = myGroupDays(); shareDay(T.days[idx >= 0 ? idx : curDay].date); return; }
+    }
+    const p = e.target.closest("[data-ph]"); if (p) { const [g, i] = p.dataset.ph.split(":").map(Number); showPhrase(g, i); return; }
+    const sd = e.target.closest("[data-share]"); if (sd) { shareDay(sd.dataset.share); return; }
+  });
+  document.addEventListener("input", e => { if (e.target.id === "sosNote") store.set("sosNote", e.target.value); });
+  // 沒網路時在上方提示（行程、住宿、會話卡都照樣能看）
+  const bar = document.createElement("div"); bar.className = "offline"; bar.innerHTML = `${li("wifioff")} 沒有網路・行程和住宿照樣能看`;
+  document.body.appendChild(bar);
+  const upd = () => bar.classList.toggle("on", !navigator.onLine);
+  addEventListener("online", () => { upd(); sync(true); }); addEventListener("offline", upd); upd();
+  // 旅行當天：每分鐘更新「進行中」和關門倒數（不重播進場動畫）
+  setInterval(() => {
+    if (document.hidden || !$("#days").classList.contains("on") || slashing) return;
+    if (myGroupDays().idx === curDay) renderDay(T.days[curDay], 0, true);
+  }, 60000);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) keepAwake(false); });
 }
 
 /* =========================================================
@@ -1317,7 +1537,7 @@ function initTabs() {
   });
   const show = (tab, push) => {
     if (!TABS.includes(tab)) tab = "home";
-    if (tab === "home") renderHome();
+    if (tab === "home") renderHome(true);
     $$(".page").forEach(p => p.classList.toggle("on", p.id === tab));
     $$("#tabbar button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
     store.set("tab", tab);
@@ -1329,14 +1549,27 @@ function initTabs() {
   // 封面是獨立的一頁；每次打開都先看到封面，按 ENTER 才進去
   // 進去後：第一次預設在航班，之後回到上次停留的分頁
   const cover = $("#cover"), app = $("#app");
+  // 分享的連結（…/#d=1/17）：進去後直接打開那一天
+  const hm = decodeURIComponent(location.hash).match(/^#d=(\d{1,2}\/\d{1,2})$/);
+  let jump = hm ? T.days.findIndex(d => d.date === hm[1]) : -1;
   if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  if (jump >= 0) $("#count").insertAdjacentHTML("afterend", `<div class="jumpto">分享的行程：${esc(T.days[jump].date)} 週${esc(T.days[jump].dow)}・${esc(T.days[jump].title)}</div>`);
   const goIn = () => {
     cover.classList.add("gone");
     setTimeout(() => {
       cover.style.display = "none"; window.__stopRain && window.__stopRain();
-      app.classList.add("on"); show("home", false);
+      app.classList.add("on");
+      if (jump >= 0) { show("days", false); selectDay(jump, false); updateBanners(); jump = -1; }
+      else show("home", false);
     }, 380);
   };
+  // App 已經開著時點到分享連結
+  addEventListener("hashchange", () => {
+    const m = decodeURIComponent(location.hash).match(/^#d=(\d{1,2}\/\d{1,2})$/), i = m ? T.days.findIndex(d => d.date === m[1]) : -1;
+    if (i < 0) return;
+    history.replaceState(null, "", location.pathname + location.search);
+    if (app.classList.contains("on")) { show("days", false); selectDay(i, false); updateBanners(); } else jump = i;
+  });
   // 一定要登入：沒登入過的人，按 ENTER 後出現登入畫面
   const gate = $("#gate");
   const enter = () => {
@@ -1354,7 +1587,7 @@ function initTabs() {
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 // 畫面風格：昭和（預設）或霓虹
 applyTheme(curTheme());
-initHero(); initFlights(); initDays(); initPrep(); initMoney(); initHome(); initTabs();
+initHero(); initFlights(); initDays(); initPrep(); initMoney(); initHome(); initTools(); initTabs();
 window.__ready = true; updateBanners();
 loadItin();
 $("#foot").innerHTML = `LAST UPDATE ${esc(T.updated)}・${window.APP_VER || ""}<br>行程是草稿，隨時會改`;
