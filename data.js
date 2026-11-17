@@ -11,21 +11,13 @@ window.TRIP = {
   code: "KANSAI//2027",
   range: "2027.01.13 – 01.21",
   departAt: "2027-01-13T01:55:00+08:00",
-  updated: "2026-11-13",
+  updated: "2026-11-17",
 
   // 共用帳本：Google Apps Script 部署後的網址（設定步驟見 README）
   SHEET_URL: "https://script.google.com/macros/s/AKfycbwOpjTe9wPVYV4QP1Sl7c1Rf0TN4n66Gn96t36PQorv4yIU3pHELckhgYSiupUTiuOdvA/exec",
 
-  // 首頁背景圖：Gemini 畫好後放到 images/ 資料夾，填檔名，例如 "images/hero.jpg"
-  HERO_IMAGE: "images/hero.jpg",
-  // 封面圖（直式，手機全螢幕）；沒填就用 HERO_IMAGE
+  // 封面圖（直式，手機全螢幕）
   COVER_IMAGE: "images/cover.jpg",
-  // 各分頁上方橫幅圖（3:1 橫圖）；沒填就從封面裁一塊
-  BANNERS: { home: "images/banner-home.jpg", flights: "images/banner-flights.jpg", days: "images/banner-days.jpg", prep: "images/banner-prep.jpg", money: "images/banner-money.jpg" },
-  // 橫幅圖要對準哪裡（水平% 垂直%）
-  BANNER_POS: { home: "66% 50%", flights: "62% 42%", days: "68% 55%", prep: "72% 62%", money: "78% 45%" },
-  // 底部按鈕圖示：Gemini 畫好後放 images/，例如 flights: "images/tab-flights.png"
-  TAB_ICONS: { home: "images/tab-home.png", flights: "images/tab-flights.png", days: "images/tab-days.png", prep: "images/tab-prep.png", money: "images/tab-money.png" },
 
   // 行程修改：網站會自動把這些列寫進試算表（每個 id 只寫一次，會整天取代）
   ITIN_PATCHES: [

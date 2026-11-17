@@ -2,7 +2,7 @@
 
 👉 網址：**https://hagan-huang.github.io/JapanTrip/**
 
-旅行網頁（預設墨色風格，可切換昭和／霓虹）：航班、每日行程、出發前準備、記帳（個人帳＋分帳），加上在日本當地用的工具箱。
+墨色風格的旅行網頁：航班、每日行程、出發前準備、記帳（個人帳＋分帳），加上在日本當地用的工具箱。
 
 ---
 
@@ -94,4 +94,4 @@ iPhone：用 Safari 打開網址 → 下方「分享」⬆ →「加入主畫面
 - `app.js`：程式
 - `sw.js`、`manifest.webmanifest`：加到主畫面、離線快取
 - `apps-script/Code.gs`：Google 試算表後端
-- `images/`：封面、橫幅、圖示
+- `images/`：封面、App 圖示、換日期斬擊用的刀

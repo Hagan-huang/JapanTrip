@@ -82,25 +82,12 @@ function heroSVG() {
   <g stroke="#05d9e8" stroke-width=".6" opacity=".35"><line x1="0" y1="296" x2="400" y2="296"/><line x1="0" y1="305" x2="400" y2="305"/><line x1="0" y1="316" x2="400" y2="316"/></g>
 </svg>`;
 }
-// 畫面風格：墨色（預設）／昭和／霓虹
-const curTheme = () => { const t = store.get("theme2", "sumi"); return ["sumi", "showa", "neon"].includes(t) ? t : "sumi"; };
-const THEME_FONTS = "https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+TC:wght@900&family=JetBrains+Mono:wght@400;700&family=Zen+Antique&family=VT323&display=swap";
-function applyTheme(t) {
-  store.set("theme2", t);
-  if (t !== "sumi" && !document.getElementById("themeFonts")) document.head.insertAdjacentHTML("beforeend", `<link id="themeFonts" rel="stylesheet" href="${THEME_FONTS}">`);
-  document.body.classList.toggle("showa", t !== "neon");
-  document.body.classList.toggle("sumi", t === "sumi");
-  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === "sumi" ? "#121212" : "#07060f";
-}
 function initHero() {
   $("#tCode").textContent = T.code;
   $("#tTitle").textContent = T.title; $("#tTitle").dataset.t = T.title;
   $("#tRange").textContent = T.range;
   const art = $("#heroArt");
-  const cover = T.COVER_IMAGE || T.HERO_IMAGE;
-  if (T.HERO_IMAGE) document.documentElement.style.setProperty("--img", `url("${T.HERO_IMAGE}")`);
-  // 各分頁橫幅圖（有設定就用，沒有就從封面裁）
-  Object.entries(T.BANNERS || {}).forEach(([k, v]) => { const b = $(`.banner[data-b="${k}"]`); if (v && b) { b.style.setProperty("--bimg", `url("${v}")`); b.style.setProperty("--bp", (T.BANNER_POS || {})[k] || "70% 50%"); b.style.setProperty("--bs", "cover"); } });
+  const cover = T.COVER_IMAGE;
   if (cover) {
     const img = new Image(); img.className = "bg"; img.alt = "";
     img.onload = () => { art.innerHTML = ""; art.appendChild(img); };
@@ -116,11 +103,10 @@ function initHero() {
   // 雨
   const cv = $("#rain"), cx = cv.getContext("2d");
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  let W, H, drops = [], flakes = [];
+  let W, H, flakes = [];
   const resize = () => {
     const r = devicePixelRatio || 1; W = cv.clientWidth; H = cv.clientHeight;
     cv.width = W * r; cv.height = H * r; cx.setTransform(r, 0, 0, r, 0, 0);
-    drops = Array.from({ length: Math.round(W / 22) }, () => ({ x: Math.random() * W, y: Math.random() * H, l: 8 + Math.random() * 14, v: 4 + Math.random() * 5, a: .1 + Math.random() * .25 }));
     flakes = Array.from({ length: Math.round(W / 4) }, () => ({ x: Math.random() * W, y: Math.random() * H, r: .8 + Math.random() * 2.2, v: .35 + Math.random() * .9, s: Math.random() * 6.28, a: .35 + Math.random() * .55 }));
   };
   resize(); addEventListener("resize", resize);
@@ -134,12 +120,6 @@ function initHero() {
     if (!visible || document.hidden) { running = false; return; }
     {
       cx.clearRect(0, 0, W, H);
-      if (!document.body.classList.contains("showa")) for (const d of drops) {
-        cx.strokeStyle = `rgba(150,230,255,${d.a})`; cx.lineWidth = 1;
-        cx.beginPath(); cx.moveTo(d.x, d.y); cx.lineTo(d.x - 1.5, d.y + d.l); cx.stroke();
-        d.y += d.v; d.x -= .3;
-        if (d.y > H) { d.y = -d.l; d.x = Math.random() * W; }
-      }
       // 一月的京都會下雪：雪花慢慢飄、左右擺動
       for (const f of flakes) {
         f.s += .02; f.y += f.v; f.x += Math.sin(f.s) * .4 - .15;
@@ -1321,7 +1301,6 @@ function renderHome(animate) {
     ${homeWeather()}
     ${homeRate()}
     ${homeProgress()}
-    <div class="theme-sw">畫面風格${[["sumi","墨色"],["showa","昭和"],["neon","霓虹"]].map(([k,n]) => `<button class="btn sm ${curTheme() === k ? "pink" : "dim"}" data-theme="${k}">${n}</button>`).join("")}</div>
   </div>`;
   if (!homeFetched) {
     homeFetched = true;
@@ -1336,7 +1315,6 @@ function initHome() {
   const v = $("#homeView");
   v.addEventListener("click", e => {
     const g = e.target.closest("[data-go]"); if (g) { e.preventDefault(); $(`#tabbar [data-tab="${g.dataset.go}"]`).click(); return; }
-    const th = e.target.closest("[data-theme]"); if (th) { applyTheme(th.dataset.theme); renderHome(); return; }
     if (e.target.id === "useRate") { const fx = store.get("fx", null); if (fx) { M.rate = +fx.twd.toFixed(4); store.set("rate", M.rate); toast("記帳匯率已更新"); renderHome(); } }
   });
   v.addEventListener("input", e => {
@@ -1590,20 +1568,12 @@ function updateBanners() {
 /* =========================================================
    Cover & tabs
    ========================================================= */
-const TAB_SVG = {
-  home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
-  flights: '<path d="M3 13l18-7-4 13-4-4-4 3 1-5z"/><path d="M13 15l8-9"/>',
-  days: '<path d="M3 6q9-3 18 0"/><path d="M5 10h14"/><path d="M7 7v14M17 7v14"/><path d="M12 7v3"/>',
-  prep: '<rect x="5" y="7" width="14" height="14" rx="3"/><path d="M9 7V5a3 3 0 016 0v2"/><path d="M9 13l2 2 4-4"/>',
-  money: '<circle cx="12" cy="12" r="9"/><path d="M8 7l4 5 4-5M12 12v6M8.5 13h7M8.5 16h7"/>'
-};
 function initTabs() {
   const TABS = ["home", "flights", "days", "prep", "money"];
-  const icons = T.TAB_ICONS || {};
   $$("#tabbar [data-ic]").forEach(i => {
     const k = i.dataset.ic;
     const TLI = { home: "home", flights: "plane", days: "map", prep: "checklist", money: "wallet" };
-    i.innerHTML = li(TLI[k], "tabli") + (icons[k] ? `<img src="${icons[k]}" alt="">` : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px currentColor)">${TAB_SVG[k]}</svg>`);
+    i.innerHTML = li(TLI[k], "tabli");
   });
   const show = (tab, push) => {
     if (!TABS.includes(tab)) tab = "home";
@@ -1657,7 +1627,6 @@ function initTabs() {
 
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 // 畫面風格：昭和（預設）或霓虹
-applyTheme(curTheme());
 initHero(); initFlights(); initDays(); initPrep(); initMoney(); initHome(); initTools(); initFx(); initTabs();
 window.__ready = true; updateBanners();
 loadItin();

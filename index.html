@@ -680,7 +680,6 @@ body.sumi .sheet .xx{border:0;background:#242424;border-radius:50%;display:grid;
 body.sumi .sheet .hd h3{font-family:var(--disp);font-weight:500;font-style:normal}
 body.sumi .fx .zan{font-weight:500}
 /* 風格切換 */
-.theme-sw{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--dim);margin-top:4px}
 /* =========================================================
    v2026-11-13：旅行當天模式、工具箱、動畫
    ========================================================= */
@@ -897,7 +896,7 @@ body.sumi .page.on .bt h2 .ch{animation:chin .7s cubic-bezier(.2,.7,.2,1) backwa
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
-<body>
+<body class="showa sumi">
 
 <div class="cover" id="cover">
   <div id="heroArt"></div>
@@ -917,7 +916,6 @@ body.sumi .page.on .bt h2 .ch{animation:chin .7s cubic-bezier(.2,.7,.2,1) backwa
 <div class="app" id="app">
   <section class="page" id="home">
     <div class="banner" data-b="home" style="--bp:50% 40%">
-      <div class="bimg"></div><div class="bscan"></div>
       <div class="hud"><span>◢ HOME-2027</span><i></i><b data-bd></b></div>
       <div class="bt"><small>ホーム</small><h2 data-t="本部" lang="ja">本部</h2><div class="bs" data-bs="home"></div></div>
     </div>
@@ -925,7 +923,6 @@ body.sumi .page.on .bt h2 .ch{animation:chin .7s cubic-bezier(.2,.7,.2,1) backwa
   </section>
   <section class="page" id="flights">
     <div class="banner" data-b="flights" style="--bp:22% 22%">
-      <div class="bimg"></div><div class="bscan"></div>
       <div class="hud"><span>◢ FLT-2027</span><i></i><b data-bd></b></div>
       <div class="bt"><small>フライト</small><h2 data-t="出発" lang="ja">出発</h2><div class="bs" data-bs="flights"></div></div>
     </div>
@@ -937,7 +934,6 @@ body.sumi .page.on .bt h2 .ch{animation:chin .7s cubic-bezier(.2,.7,.2,1) backwa
   </section>
   <section class="page on" id="days">
     <div class="banner" data-b="days" style="--bp:50% 58%">
-      <div class="bimg"></div><div class="bscan"></div>
       <div class="hud"><span>◢ RTE-2027</span><i></i><b data-bd></b></div>
       <div class="bt"><small>ルート</small><h2 data-t="旅程" lang="ja">旅程</h2><div class="bs" data-bs="days"></div></div>
     </div>
@@ -950,7 +946,6 @@ body.sumi .page.on .bt h2 .ch{animation:chin .7s cubic-bezier(.2,.7,.2,1) backwa
   </section>
   <section class="page" id="prep">
     <div class="banner" data-b="prep" style="--bp:96% 55%">
-      <div class="bimg"></div><div class="bscan"></div>
       <div class="hud"><span>◢ CHK-2027</span><i></i><b data-bd></b></div>
       <div class="bt"><small>ジュンビ</small><h2 data-t="支度" lang="ja">支度</h2><div class="bs" data-bs="prep"></div></div>
     </div>
@@ -965,7 +960,6 @@ body.sumi .page.on .bt h2 .ch{animation:chin .7s cubic-bezier(.2,.7,.2,1) backwa
   </section>
   <section class="page" id="money">
     <div class="banner" data-b="money" style="--bp:72% 12%">
-      <div class="bimg"></div><div class="bscan"></div>
       <div class="hud"><span>◢ YEN-2027</span><i></i><b data-bd></b></div>
       <div class="bt"><small>カケイボ</small><h2 data-t="家計簿" lang="ja">家計簿</h2><div class="bs" data-bs="money"></div></div>
     </div>
@@ -994,9 +988,9 @@ body.sumi .page.on .bt h2 .ch{animation:chin .7s cubic-bezier(.2,.7,.2,1) backwa
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
-<script>window.APP_VER="v2026111701"</script>
-<script src="data.js?v=2026111701"></script>
-<script src="art.js?v=2026111701"></script>
-<script src="app.js?v=2026111701"></script>
+<script>window.APP_VER="v2026111702"</script>
+<script src="data.js?v=2026111702"></script>
+<script src="art.js?v=2026111702"></script>
+<script src="app.js?v=2026111702"></script>
 </body>
 </html>
