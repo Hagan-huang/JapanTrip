@@ -13,7 +13,7 @@ const SYNC_KEYS = ["personal", "lists", "checks", "rate", "budget", "group"];
 let toastTimer;
 function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.classList.add("show");
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), Math.max(2200, String(msg).length * 80));
 }
 const mapUrl = q => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -467,7 +467,12 @@ function initDays() {
   railIn.innerHTML = T.days.map((d, i) =>
     `<button class="dt" data-i="${i}"><span class="d">${esc(d.date)}</span><span class="w">週${esc(d.dow)}</span></button>`).join("");
   railIn.addEventListener("click", e => { const b = e.target.closest(".dt"); if (b) selectDay(+b.dataset.i, true); });
-  $("#dayView").addEventListener("click", e => { const b = e.target.closest("[data-jump]"); if (b) selectDay(+b.dataset.jump, true); });
+  $("#dayView").addEventListener("click", e => {
+    // 點價格：看這筆錢怎麼算的（在景點連結裡面，不要跳去地圖）
+    const pc = e.target.closest(".pchip");
+    if (pc) { e.preventDefault(); e.stopPropagation(); toast(pc.dataset.ptip.replace(/\n/g, "・")); return; }
+    const b = e.target.closest("[data-jump]"); if (b) selectDay(+b.dataset.jump, true);
+  });
   // 在行程上左右滑動換天：往左滑＝下一天，往右滑＝上一天
   let sx = 0, sy = 0, st = 0;
   const dv = $("#dayView");
@@ -534,6 +539,74 @@ function dayScene(d, c) {
   const flakes = Array.from({ length: 12 }, () => `<i style="left:${(Math.random() * 100).toFixed(1)}%;--d:${(6 + Math.random() * 6).toFixed(2)}s;--w:${(Math.random() * -10).toFixed(2)}s;--s:${(.4 + Math.random() * .6).toFixed(2)}"></i>`).join("");
   return `<div class="dscene ink" data-d="${esc(d.date)}" style="--c:${c}"><img src="${esc(im.src)}" alt="" decoding="async" style="object-position:${esc(im.pos || "50% 50%")}" onerror="this.parentNode.classList.add('fail')">${line}<div class="wxfx snow" aria-hidden="true">${flakes}</div></div>`;
 }
+/* ---------- 價格：價格簿（prices.js）跟著行程文字走，每天自動比較單買和一日券 ---------- */
+const PB = window.PRICES || { rules: [], passes: [] };
+const yen = n => "¥" + Math.round(n).toLocaleString("en-US");
+// 給這一項找價格：先查價格簿，沒有的話景點／吃的可以用備註裡的 ¥（交通的備註常常是票券建議，不拿來用）
+function priceOf(it) {
+  const tx = String(it.text || "");
+  const r = PB.rules.find(r => r.has.every(h => tx.includes(h)) && (!r.mode || r.mode === it.mode));
+  if (r) return { parts: r.parts, rule: true };
+  if (it.type === "spot" || it.type === "food") {
+    const m = String(it.note || "").match(/(約\s*)?¥\s?([\d,]+)/);
+    if (m && !/日券|周遊/.test(it.note)) return { parts: [{ op: "in", yen: +m[2].replace(/,/g, ""), est: !!m[1] || /約/.test(it.note) }] };
+    return null;
+  }
+  return null;
+}
+const needsPrice = it => it.type === "move" && !["飛機", "步行"].includes(it.mode);
+// 備註裡「買哪張票」的建議交給下方自動計算，避免行程改了以後建議過期
+const cleanNote = n => String(n || "").split("；").filter(s => !/一日券|1日券|ICOCA & HARUKA/.test(s)).join("；");
+function priceChip(p) {
+  if (!p || !p.parts.length) return "";
+  const sum = p.parts.reduce((a, x) => a + x.yen, 0), est = p.parts.some(x => x.est);
+  const tip = p.parts.map(x => `${x.label || ""} ${yen(x.yen)}${x.est ? "（估）" : ""}`.trim()).join("\n");
+  return `<span class="pchip${est ? " est" : ""}" role="button" tabindex="0" data-ptip="${esc(tip)}">${est ? "約 " : ""}${yen(sum)}</span>`;
+}
+// 一天的交通＋門票：單買 vs 最多兩張一日券的所有組合
+function dayCost(d, items) {
+  const we = /[六日]/.test(d.dow || ""), parts = [], missing = [];
+  items.forEach(it => {
+    const p = priceOf(it);
+    if (p) parts.push(...p.parts); else if (needsPrice(it)) missing.push(it.text);
+  });
+  const trans = parts.filter(x => x.op !== "in"), tix = parts.filter(x => x.op === "in");
+  const single = parts.reduce((a, x) => a + x.yen, 0);
+  const key = x => x.op === "in" ? "in:" + (x.id || "") : x.op;
+  const P = PB.passes.map(p => ({ ...p, price: we && p.yenWE ? p.yenWE : p.yen }));
+  const combos = [];
+  P.forEach((a, i) => { combos.push([a]); P.slice(i + 1).forEach(b => combos.push([a, b])); });
+  const opts = combos.map(cb => {
+    const cov = new Set(cb.flatMap(p => p.covers));
+    const used = cb.every(p => parts.some(x => p.covers.includes(key(x))));
+    const rest = parts.filter(x => !cov.has(key(x))).reduce((a, x) => a + x.yen, 0);
+    // 顯示用：只看交通（＋這張券剛好包含的門票），沒包含的門票兩邊一樣，不列進來
+    const base = parts.filter(x => x.op !== "in" || cov.has(key(x))).reduce((a, x) => a + x.yen, 0);
+    const restT = parts.filter(x => x.op !== "in" && !cov.has(key(x))).reduce((a, x) => a + x.yen, 0);
+    const pay = cb.reduce((a, p) => a + p.price, 0);
+    return { cb, used, rest: restT, base, pay, total: pay + rest, show: pay + restT };
+  }).filter(o => o.used).sort((a, b) => a.total - b.total);
+  return { trans: trans.reduce((a, x) => a + x.yen, 0), tix: tix.reduce((a, x) => a + x.yen, 0), single, best: opts[0], alt: opts[1], missing, est: parts.some(x => x.est) };
+}
+function costCard(d, items) {
+  if (!PB.rules.length) return "";
+  const c = dayCost(d, items);
+  if (!c.single && !c.missing.length) return "";
+  const nm = cb => cb.map(p => esc(p.name)).join(" ＋ ");
+  let adv;
+  if (c.best && c.best.total < c.single) {
+    const b = c.best;
+    adv = `<div class="pc-best">${li("ticket")}<div><b>買 ${nm(b.cb)}</b><span>${b.cb.map(p => yen(p.price)).join("＋")}${b.rest ? ` ＋ 其他交通單買 ${yen(b.rest)}` : ""} ＝ ${yen(b.show)}（全部單買 ${yen(b.base)}），<em>省 ${yen(c.single - b.total)}</em></span><small>${b.cb.map(p => esc(p.buy || "")).filter(Boolean).join("；")}</small></div></div>` +
+      (c.alt ? `<div class="pc-alt">次好：${nm(c.alt.cb)}，${c.alt.total === c.single ? "跟單買一樣" : c.alt.total < c.single ? `省 ${yen(c.single - c.alt.total)}` : `比單買多 ${yen(c.alt.total - c.single)}`}</div>` : "");
+  } else {
+    const b = c.best, d0 = b ? b.total - c.single : 0;
+    adv = `<div class="pc-best plain">${li("ticket")}<div><b>單買最划算</b><span>${b ? `${nm(b.cb)} ${yen(b.pay)}，${d0 ? `比單買多 ${yen(d0)}` : "跟單買一樣，買不買都行"}` : "這天沒有適用的一日券"}</span></div></div>`;
+  }
+  const miss = c.missing.length ? `<div class="pc-miss">${li("alert")}還有 ${c.missing.length} 項沒有價格：${c.missing.map(esc).join("、")}</div>` : "";
+  return `<div class="card pcost"><div class="pc-h">${li("yen")}今日交通・門票<small>每人${c.est ? "・含估計" : ""}</small></div>
+    <div class="pc-row"><span>交通<b>${yen(c.trans)}</b></span><span>門票<b>${yen(c.tix)}</b></span><span>合計<b>${yen(c.single)}</b></span></div>
+    ${adv}${miss}<div class="pc-ft">價格跟著行程走，改了行程這裡會自動重算・票價查於 ${esc(PB.checked || "")}</div></div>`;
+}
 function renderDay(d, delay = 0, quiet = false) {
   const c = HUE[d.hue] || "var(--cyan)";
   const grp = group === "all" ? null : T.groups.find(g => g.id === group);
@@ -559,15 +632,18 @@ function renderDay(d, delay = 0, quiet = false) {
       else if (r != null && r <= 120) left = `<span class="cdn${r <= 45 ? " warn" : ""}">還有 ${fmtDur(r)}</span>`;
     }
     const close = it.close ? `<div class="close">${esc(it.close)}${left}</div>` : "";
-    const note = it.note ? `<div class="sub">${esc(it.note)}</div>` : "";
+    const chip = priceChip(priceOf(it));
+    // 有價格標籤了，備註裡只寫「¥500」這種就不用再重複一次
+    const nt = it.type === "move" ? cleanNote(it.note) : chip ? String(it.note || "").split(/[；，]/).filter(x => !/^\s*(約\s*)?¥[\d,]+\s*$/.test(x)).join("，") : it.note;
+    const note = nt ? `<div class="sub">${esc(nt)}</div>` : "";
     let body;
     if (it.type === "move") {
-      body = `<div class="mv">${it.mode ? `<span class="tag" style="--tc:${MODE_C[it.mode] || "var(--cyan)"}">${esc(it.mode)}</span>` : ""}${tbd}${esc(it.text)}${pp}</div>${note}${close}`;
+      body = `<div class="mv">${it.mode ? `<span class="tag" style="--tc:${MODE_C[it.mode] || "var(--cyan)"}">${esc(it.mode)}</span>` : ""}${tbd}${esc(it.text)}${pp}${chip}</div>${note}${close}`;
     } else if (it.type === "note") {
       body = `<div class="mv notep">${tbd}${esc(it.text)}${pp}</div>${note}${close}`;
     } else {
       // 旅行當天按下去直接導航；出發前只是看地圖
-      const inner = `${it.map ? `<span class="m">${live ? "路線" : "MAP"} ↗</span>` : ""}<div class="n">${tbd}${esc(it.text)}${pp}</div>${note}${close}`;
+      const inner = `${it.map ? `<span class="m">${live ? "路線" : "MAP"} ↗</span>` : ""}<div class="n">${tbd}${esc(it.text)}${pp}${chip}</div>${note}${close}`;
       body = it.map ? `<a class="spot" href="${live ? navUrl(it.map) : mapUrl(it.map)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="spot">${inner}</div>`;
     }
     const badge = st === " lv-now" ? `<span class="nowb">進行中</span>` : st === " lv-next" ? `<span class="nowb nx">下一個</span>` : "";
@@ -584,7 +660,7 @@ function renderDay(d, delay = 0, quiet = false) {
       <div class="s">${away ? `${esc(T.days[grp.arrive].date)} 才出發` : `住 ${esc(alt.stay || d.stay)}<span class="pp">${esc(alt.people || d.people)}</span>`}</div>${away ? "" : dayWx(d)}</div>
       <button class="share" data-share="${esc(d.date)}" aria-label="分享這天的行程">${li("share")}</button>
     </div>
-    ${away ? `<div class="card away"><b>🇹🇼</b>${esc(grp.name)} ${esc(T.days[grp.arrive].date)} 才出發，這天還沒到日本<div class="mt"><button class="btn sm yel" data-jump="${grp.arrive}">看 ${esc(T.days[grp.arrive].date)} ▸</button></div></div>` : `<div class="tl">${items}</div>`}
+    ${away ? `<div class="card away"><b>🇹🇼</b>${esc(grp.name)} ${esc(T.days[grp.arrive].date)} 才出發，這天還沒到日本<div class="mt"><button class="btn sm yel" data-jump="${grp.arrive}">看 ${esc(T.days[grp.arrive].date)} ▸</button></div></div>` : `<div class="tl">${items}</div>${costCard(d, sorted)}`}
     <div class="swipe-hint">← 左右滑動切換日期 →</div>`;
   if (keep) { const n = $("#dayView .dscene"); if (n) n.replaceWith(keep); }
 }
@@ -598,9 +674,13 @@ const LISTS = store.get("lists", null) || { todo: T.todo.map(x => ({ ...x })), s
 (() => {
   const seen = store.get("listAdds", []); let changed = false;
   (T.LIST_ADDS || []).forEach(a => {
-    if (seen.includes(a.id)) return; seen.push(a.id); changed = true;
+    const k = a.once || a.id;
+    if (seen.includes(k)) return; seen.push(k); changed = true;
     const src = (T[a.list === "todo" ? "todo" : "shopping"] || []).find(x => x.id === a.id), dst = LISTS[a.list];
-    if (src && dst && !dst.some(x => x.id === a.id)) dst.push({ ...src });
+    if (!src || !dst) return;
+    const have = dst.find(x => x.id === a.id);
+    if (a.edit) { if (have) have.text = src.text; }
+    else if (!have) dst.push({ ...src });
   });
   // 標記成「手機有新改動」，登入同步時才不會被雲端舊清單蓋掉
   if (changed) { store.set("listAdds", seen); store.set("lists", LISTS); store.set("dirty", true); }
