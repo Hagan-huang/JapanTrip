@@ -566,6 +566,7 @@ function renderDay(d, delay = 0, quiet = false) {
   }).join("");
   $("#dayView").classList.toggle("quiet", quiet);
   $("#dayView").innerHTML = `
+    ${typeof ART !== "undefined" ? `<div class="dscene" style="--c:${c}">${ART.day(d.icon)}</div>` : ""}
     <div class="card glow dcard" style="--c:${c};animation-delay:${delay}ms;animation-fill-mode:backwards">
       <div class="art"><svg viewBox="0 0 40 40" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[d.icon] || ICONS.torii}</svg></div>
       <div><div class="k">DAY ${di + 1} · ${esc(d.date)} 週${esc(d.dow)}</div><h3>${esc(away ? "還在台灣" : alt.title || d.title)}</h3>
@@ -604,7 +605,12 @@ function initPrep() {
   const render = window.__renderPrep = () => { box($("#todoBox"), "todo", "待辦清單"); box($("#shopBox"), "shopping", "待買清單"); if (window.__ready) updateBanners(); };
   render();
   $("#prep").addEventListener("change", e => {
-    if (e.target.dataset.id) { CHECKS[e.target.dataset.id] = e.target.checked; window.__justChecked = e.target.checked ? e.target.dataset.id : null; store.set("checks", CHECKS); render(); window.__justChecked = null; }
+    if (e.target.dataset.id) {
+      CHECKS[e.target.dataset.id] = e.target.checked; window.__justChecked = e.target.checked ? e.target.dataset.id : null; store.set("checks", CHECKS); render(); window.__justChecked = null;
+      // 這張清單剛好全部打勾：蓋章
+      const key = LISTS.todo.some(x => x.id === e.target.dataset.id) ? "todo" : "shopping";
+      if (e.target.checked && LISTS[key].length && LISTS[key].every(x => CHECKS[x.id])) stampDone($(key === "todo" ? "#todoBox" : "#shopBox"));
+    }
   });
   $("#prep").addEventListener("submit", e => {
     const f = e.target.closest("[data-add]"); if (!f) return;
@@ -995,7 +1001,7 @@ async function saveRecord() {
   const base = { id: uid(), date: f.date || today(), amount, currency: f.cur, category: f.cat, note: (f.note || "").trim(), createdAt: Date.now() };
   if (f.kind === "p") {
     M.personal.push(base); store.set("personal", M.personal);
-    toast("已記到個人帳");
+    toast("已記到個人帳"); coinDrop();
   } else {
     if (!f.split.length) return toast("至少要分給一個人");
     let split;
@@ -1007,7 +1013,7 @@ async function saveRecord() {
     }
     const rec = { ...base, payer: f.payer || M.me, split, createdBy: M.me };
     M.pending.push({ action: "add", rec }); store.set("pending", M.pending);
-    toast("已記到分帳");
+    toast("已記到分帳"); coinDrop();
     sync(true);
   }
   M.form = { kind: f.kind, cur: f.cur, cat: f.cat, split: f.split, splitTouched: f.splitTouched, mode: "eq", payer: f.payer, date: f.date };
@@ -1264,7 +1270,7 @@ function homeToday() {
 }
 function homeWeather() {
   const w = store.get("wx", null);
-  if (!w || !w.kyoto) return `<div class="card hc"><h4>${li("partly")} 天氣</h4><div class="hint">${homeFail.wx ? "目前連不上天氣服務，等一下再看" : "讀取中…"}</div></div>`;
+  if (!w || !w.kyoto) return `<div class="card hc"><h4>${li("partly")} 天氣</h4><div class="hint">${homeFail.wx ? "目前連不上天氣服務，等一下再看" : ENSO + "讀取中…"}</div></div>`;
   const city = c => { const d = w[c.k]; if (!d || !d.current) return ""; const [ic, tx] = wx(d.current.weather_code);
     return `<div class="card hc"><h4>${c.name}</h4><div class="wx"><span class="ic">${ic}</span><div><span class="tp">${Math.round(d.current.temperature_2m)}°</span><small>${tx}・${Math.round(d.daily.temperature_2m_min[0])}°/${Math.round(d.daily.temperature_2m_max[0])}°</small></div></div>
     <div class="wxd">${d.daily.time.slice(1, 4).map((t, i) => `<div>${+t.slice(5, 7)}/${+t.slice(8)}<b>${wx(d.daily.weather_code[i + 1])[0]}</b><i>${Math.round(d.daily.temperature_2m_max[i + 1])}°</i></div>`).join("")}</div></div>`; };
@@ -1277,7 +1283,7 @@ function homeWeather() {
 }
 function homeRate() {
   const fx = store.get("fx", null);
-  if (!fx) return `<div class="card hc"><h4>${li("yen")} 匯率</h4><div class="hint">${homeFail.fx ? "目前連不上匯率服務，記帳先用自訂匯率" : "讀取中…"}</div></div>`;
+  if (!fx) return `<div class="card hc"><h4>${li("yen")} 匯率</h4><div class="hint">${homeFail.fx ? "目前連不上匯率服務，記帳先用自訂匯率" : ENSO + "讀取中…"}</div></div>`;
   return `<div class="card hc fx-rate"><h4>${li("yen")} 日圓匯率</h4>
     <div class="big">${fx.twd.toFixed(4)}<small>台幣 / 1 日圓</small></div>
     <div class="conv"><input class="in" id="convIn" type="number" inputmode="decimal" placeholder="輸入日圓" value="${store.get("convJ", 10000)}"><span id="convOut">≈ ${fmtT((store.get("convJ", 10000) || 0) * fx.twd)}</span></div>
@@ -1320,7 +1326,7 @@ function renderHome(animate) {
   if (!homeFetched) {
     homeFetched = true;
     const w = store.get("wx", null), fx = store.get("fx", null);
-    if (!w || Date.now() - w.at > 30 * 6e4) fetchWeather().then(() => renderHome()).catch(() => { homeFail.wx = true; renderHome(); });
+    if (!w || Date.now() - w.at > 30 * 6e4) fetchWeather().then(() => { renderHome(); const b = $('.banner[data-b="home"]'); if (b && $("#home").classList.contains("on")) weatherFx(b); }).catch(() => { homeFail.wx = true; renderHome(); });
     if (!fx || Date.now() - fx.at > 6 * 36e5) fetchRate().then(() => renderHome()).catch(() => { homeFail.fx = true; renderHome(); });
   }
   clearTimeout(homeTimer);
@@ -1499,13 +1505,77 @@ function initTools() {
 }
 
 /* =========================================================
+   動畫小品：頁首插畫重畫、標題逐字浮現、數字滾動、墨暈、
+   天氣粒子、清單完成蓋章、記帳金幣
+   ========================================================= */
+const ENSO = `<svg class="enso" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 1-8.2 5.3" pathLength="1"/></svg>`;
+// 切到某一頁：重新畫一次頁首插畫（主頁會依日本時間換日夜）
+function drawHead(tab) {
+  if (typeof ART === "undefined") return;
+  const b = $(`.banner[data-b="${tab}"]`); if (!b) return;
+  const old = b.querySelector(".hart"); if (old) old.remove();
+  b.insertAdjacentHTML("beforeend", ART.head(tab));
+  if (tab === "home") weatherFx(b);
+}
+// 數字從 0 滾到目標值
+function countUp(root) {
+  $$("[data-count]", root).forEach(el => {
+    const n = +el.dataset.count; if (!(n > 0)) return;
+    const t0 = performance.now(), dur = 900;
+    const step = t => { const k = Math.min(1, (t - t0) / dur); el.textContent = Math.round(n * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  });
+}
+// 主頁頁首：照今天住的城市的即時天氣下雪、下雨
+function weatherFx(banner) {
+  const old = banner.querySelector(".wxfx"); if (old) old.remove();
+  const w = store.get("wx", null); if (!w) return;
+  const city = /京都|kyoto/i.test(stayTonight().name) ? "kyoto" : "osaka";
+  const code = w[city] && w[city].current ? w[city].current.weather_code : null; if (code == null) return;
+  const snow = [71, 73, 75, 77, 85, 86].includes(code), rain = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95;
+  if (!snow && !rain) return;
+  const n = snow ? 22 : 28;
+  banner.insertAdjacentHTML("beforeend", `<div class="wxfx ${snow ? "snow" : "rain"}" aria-hidden="true">${Array.from({ length: n }, () =>
+    `<i style="left:${(Math.random() * 100).toFixed(1)}%;--d:${(snow ? 5 + Math.random() * 5 : .7 + Math.random() * .5).toFixed(2)}s;--w:${(Math.random() * -8).toFixed(2)}s;--s:${(.5 + Math.random() * .8).toFixed(2)}"></i>`).join("")}</div>`);
+}
+// 清單全部完成：蓋一個大大的「済」
+function stampDone(box) {
+  if (!box) return;
+  box.insertAdjacentHTML("beforeend", `<div class="bigstamp" aria-hidden="true"><span lang="ja">済</span><small>全部完成</small></div>`);
+  box.classList.add("thud"); setTimeout(() => box.classList.remove("thud"), 400);
+  setTimeout(() => { const s = box.querySelector(".bigstamp"); if (s) s.classList.add("out"); }, 1600);
+  setTimeout(() => { const s = box.querySelector(".bigstamp"); if (s) s.remove(); }, 2200);
+}
+// 記一筆：小判掉進下方的「記帳」
+function coinDrop() {
+  const tab = $('#tabbar button[data-tab="money"]'); if (!tab) return;
+  const r = tab.getBoundingClientRect(), c = document.createElement("div");
+  c.className = "coindrop"; c.setAttribute("aria-hidden", "true");
+  c.innerHTML = `<svg viewBox="0 0 40 24"><ellipse cx="20" cy="12" rx="18" ry="10"/><path d="M12 12h16M20 6v12"/></svg><b lang="ja">チャリン</b>`;
+  c.style.left = (r.left + r.width / 2 - 20) + "px"; c.style.setProperty("--to", (r.top + 4) + "px");
+  document.body.appendChild(c); setTimeout(() => c.remove(), 1300);
+}
+window.__coinDrop = () => coinDrop();
+function initFx() {
+  // 標題每個字包起來，逐字浮現
+  $$(".bt h2").forEach(h => { h.innerHTML = [...h.textContent].map((ch, i) => `<span class="ch" style="--i:${i}">${esc(ch)}</span>`).join(""); });
+  // 按下去的墨暈
+  document.addEventListener("pointerdown", e => {
+    const el = e.target.closest(".tool,.btn,.chip,.phr,.sosr,#tabbar button,.share"); if (!el) return;
+    const r = el.getBoundingClientRect(), s = Math.max(r.width, r.height) * 2.2, d = document.createElement("span");
+    d.className = "ripple"; d.style.cssText = `width:${s}px;height:${s}px;left:${e.clientX - r.left - s / 2}px;top:${e.clientY - r.top - s / 2}px`;
+    el.appendChild(d); setTimeout(() => d.remove(), 650);
+  }, { passive: true });
+}
+
+/* =========================================================
    Banner status
    ========================================================= */
 function updateBanners() {
   const set = (k, html) => { const el = $(`[data-bs="${k}"]`); if (el) el.innerHTML = html; };
   const out = T.flights.filter(f => !f.ret).length;
   const dd = Math.ceil((new Date(T.departAt) - Date.now()) / 864e5);
-  set("home", `${typeof M !== "undefined" && M.me ? esc(M.me) + "・" : ""}${dd > 0 ? `出發倒數 <b>${dd}</b> 天` : "旅行中"}`);
+  set("home", `${typeof M !== "undefined" && M.me ? esc(M.me) + "・" : ""}${dd > 0 ? `出發倒數 <b data-count="${dd}">${dd}</b> 天` : "旅行中"}`);
   set("flights", `去程 <b>${out}</b> 班・回程 <b>${T.flights.length - out}</b> 班・點卡片看飛行過程`);
   const g = group === "all" ? "全部組別" : T.groups.find(x => x.id === group).name, d = T.days[curDay];
   set("days", `${esc(g)}・<b>${esc(d.date)}</b> 週${esc(d.dow)}・DAY ${curDay + 1}/${T.days.length}`);
@@ -1543,6 +1613,7 @@ function initTabs() {
     store.set("tab", tab);
     scrollTo(0, 0);
     if (tab === "days") { const r = $("#rail"), i = curDay; r.scrollLeft = Math.max(0, 4 + i * 64 + 32 - r.clientWidth / 2); }
+    drawHead(tab); countUp($(`.banner[data-b="${tab}"]`));
   };
   $("#tabbar").addEventListener("click", e => { const b = e.target.closest("button"); if (b) show(b.dataset.tab, true); });
 
@@ -1587,7 +1658,7 @@ function initTabs() {
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 // 畫面風格：昭和（預設）或霓虹
 applyTheme(curTheme());
-initHero(); initFlights(); initDays(); initPrep(); initMoney(); initHome(); initTools(); initTabs();
+initHero(); initFlights(); initDays(); initPrep(); initMoney(); initHome(); initTools(); initFx(); initTabs();
 window.__ready = true; updateBanners();
 loadItin();
 $("#foot").innerHTML = `LAST UPDATE ${esc(T.updated)}・${window.APP_VER || ""}<br>行程是草稿，隨時會改`;
