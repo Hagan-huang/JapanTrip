@@ -571,7 +571,7 @@ body.sumi b,body.sumi strong,body.sumi h3,body.sumi h4,body.sumi .tabbar button,
 body.sumi .wrap{padding:0 20px}
 /* 封面 */
 body.sumi .vhs{display:none}
-body.sumi .cover .shade{height:70%;background:linear-gradient(180deg,transparent,rgba(18,18,18,.82) 45%,#121212 88%)}
+body.sumi .cover .shade{top:0;height:auto;background:linear-gradient(180deg,rgba(10,11,14,.6),transparent 34%,transparent 74%,rgba(12,12,12,.8) 100%)}
 body.sumi .code{color:var(--gold);letter-spacing:.6em;font-size:10px}
 body.sumi .glitch{font-family:var(--disp);font-weight:500;letter-spacing:.08em;color:var(--text)}
 body.sumi .range{font-size:12px;letter-spacing:.3em}
@@ -774,10 +774,14 @@ body.sumi .tabbar button.on::after{transform:scale(1)}
 .btn:active,.chip:active{transform:scale(.96)}
 
 /* ---------- 墨色封面：把霓虹插畫壓成墨色＋金，跟裡面一致 ---------- */
-body.sumi .cover #heroArt img{filter:grayscale(.92) sepia(.28) brightness(.6) contrast(1.12)}
+/* 封面：Gemini 水墨畫（11-17）。標題放上方的夜空，ENTER 放下方 */
+body.sumi .cover #heroArt img{object-position:50% 100%}
+body.sumi .cover .txt{top:calc(9vh + env(safe-area-inset-top));bottom:calc(34px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center}
+body.sumi .cover .txt>div:has(.enter){margin-top:auto}
+body.sumi .cover .txt .enter{background:rgba(14,14,14,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 body.sumi .cover #heroArt{animation:kb 26s ease-in-out infinite alternate}
 @keyframes kb{from{transform:scale(1)}to{transform:scale(1.07) translate(-1%,-1.5%)}}
-body.sumi .cover::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 35%,transparent 40%,rgba(10,10,10,.55) 100%)}
+body.sumi .cover::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 55%,transparent 55%,rgba(10,10,10,.45) 100%)}
 body.sumi .cover .txt{z-index:2}
 body.sumi .enter{animation:goldbreath 3.2s ease-in-out infinite}
 @keyframes goldbreath{0%,100%{box-shadow:0 0 0 0 rgba(200,165,94,0)}50%{box-shadow:0 0 22px 0 rgba(200,165,94,.28)}}
@@ -988,9 +992,9 @@ body.sumi .page.on .bt h2 .ch{animation:chin .7s cubic-bezier(.2,.7,.2,1) backwa
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
-<script>window.APP_VER="v2026111702"</script>
-<script src="data.js?v=2026111702"></script>
-<script src="art.js?v=2026111702"></script>
-<script src="app.js?v=2026111702"></script>
+<script>window.APP_VER="v2026111703"</script>
+<script src="data.js?v=2026111703"></script>
+<script src="art.js?v=2026111703"></script>
+<script src="app.js?v=2026111703"></script>
 </body>
 </html>
