@@ -143,46 +143,65 @@ const localT = (iso, code) => { const d = new Date(iso); const u = new Date(d.ge
 const durTxt = ms => { const m = Math.round(ms / 6e4); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`; };
 const apName = (c, t) => AP[c].name + (t ? " " + t : "");
 
+// 黑金登機證
+const dowOf = date => (T.days.find(d => d.date === date) || {}).dow || "";
 function flightCard(f, i) {
   const L = f.legs, a = L[0], z = L[L.length - 1];
-  const total = new Date(z.arr) - new Date(a.dep);
-  return `<div class="card fl ticket" style="--c:${CMAP[f.color] || "var(--cyan)"}" data-f="${i}">
-    <div class="tkh"><span lang="ja">航空券</span><span>${f.ret ? "復路 RETURN" : "往路 OUTBOUND"}</span><span class="tkno">No.${String(i + 1).padStart(4, "0")}</span></div>
-    <div class="top"><span>${f.ret ? "1/21（四）回程・全員" : esc(f.date) + "　去程"}</span><span>${L.map(l => esc(l.no || l.airline)).join(" → ")}</span></div>
-    <div class="row">
-      <div><div class="t">${localT(a.dep, a.from)}</div><div class="p">${esc(apName(a.from, a.fromT))}</div></div>
-      <div class="mid"><span>${L.length > 1 ? "轉機・" : ""}${durTxt(total)}</span></div>
-      <div class="end"><div class="t">${localT(z.arr, z.to)}</div><div class="p">${esc(apName(z.to, z.toT))}</div></div>
+  const total = new Date(z.arr) - new Date(a.dep), date = f.ret ? "1/21" : f.date;
+  const via = L.length > 1 ? `經${L.slice(0, -1).map(l => AP[l.to].name).join("、")}・` : "";
+  return `<div class="card fl bp" data-f="${i}">
+    <div class="bp-h"><span class="bp-dir">${f.ret ? "復路" : "往路"}</span><span class="bp-dt">${esc(date)} 週${esc(dowOf(date))}${f.ret ? "・全員" : ""}</span><span class="bp-num">No.${String(i + 1).padStart(4, "0")}</span></div>
+    <div class="bp-r">
+      <div class="bp-ap"><b>${localT(a.dep, a.from)}</b><span>${esc(apName(a.from, a.fromT))}</span><i>${esc(a.from)}</i></div>
+      <div class="bp-mid"><div class="bp-ln"><span class="bp-pl">${li("plane")}</span></div><small>${esc(via)}${durTxt(total)}</small></div>
+      <div class="bp-ap end"><b>${localT(z.arr, z.to)}</b><span>${esc(apName(z.to, z.toT))}</span><i>${esc(z.to)}</i></div>
     </div>
-    ${L.length > 1 ? `<div class="legs">經 ${L.slice(0, -1).map(l => AP[l.to].name).join("、")}</div>` : ""}
-    ${f.note ? `<div class="nt">▸ ${esc(f.note)}</div>` : ""}
-    <div class="stub">${paxLine(f)}
-    <div class="go">飛行過程 ▸</div></div>
+    <div class="bp-no">${L.map(l => esc(l.no || l.airline)).join("<em>→</em>")}</div>
+    ${f.note ? `<div class="bp-nt">${esc(f.note)}</div>` : ""}
+    <div class="bp-cut" aria-hidden="true"></div>
+    <div class="bp-s"><span class="bp-px">${paxCount(f)}</span><span class="bp-go">飛行過程 ›</span></div>
   </div>`;
 }
 let fTab = 0;
 // 誰搭哪一班（存在 Google 試算表）
 const flightOf = () => (typeof M !== "undefined" && M.cache.flights) || {};
-function paxLine(f) {
-  if (typeof M === "undefined") return "";
+// 這班有誰（回程＝所有人）
+function paxNames(f) {
+  if (typeof M === "undefined") return { names: [], want: f.ret ? 8 : f.pax };
   const fm = flightOf(), members = M.cache.members || [];
-  const names = f.ret ? members : members.filter(n => fm[n] === f.id);
-  const want = f.ret ? 8 : f.pax;
-  if (!names.length) return `<div class="pax"><span class="pl">乘客</span><span class="none">還沒有人登記${want ? `（預計 ${want} 人）` : ""}</span></div>`;
-  return `<div class="pax"><span class="pl">乘客 ${names.length}${want ? "/" + want : ""}</span>${names.map(n => `<span class="pn${n === M.me ? " me" : ""}">${esc(n)}</span>`).join("")}</div>`;
+  return { names: f.ret ? members : members.filter(n => fm[n] === f.id), want: f.ret ? 8 : f.pax };
 }
+// 票卡上只寫人數，名單在點開的飛行過程裡
+function paxCount(f) {
+  const { names, want } = paxNames(f);
+  return names.length ? `乘客 <b>${names.length}</b>${want ? ` / ${want}` : ""}` : `還沒有人登記${want ? `・預計 ${want} 人` : ""}`;
+}
+function paxBlock(f) {
+  const { names, want } = paxNames(f);
+  if (!names.length) return `<div class="paxs"><span class="pl">乘客</span><span class="none">還沒有人登記${want ? `（預計 ${want} 人）` : ""}</span></div>`;
+  return `<div class="paxs"><span class="pl">乘客 ${names.length}${want ? " / " + want : ""}</span>${names.map(n => `<span class="pn${typeof M !== "undefined" && n === M.me ? " me" : ""}">${esc(n)}</span>`).join("")}</div>`;
+}
+// 登記搭哪班：登記好就收成一行，要改再點開；沒登入時只顯示一行提示
+let pickOpen = false;
 function renderPick() {
   const el = $("#fpick"); if (!el || typeof M === "undefined") return;
-  if (!Acct.logged()) { el.innerHTML = joinForm("登入後，就能登記你搭哪一班，名字會出現在航班卡上。"); return; }
-  const mine = flightOf()[M.me];
-  el.innerHTML = `<div class="card glow" style="--c:var(--yellow)">
-    <div style="font-weight:900;margin-bottom:8px">${li("plane")} ${esc(M.me)}，你搭哪一班？</div>
+  if (!Acct.logged()) {
+    el.innerHTML = pickOpen ? joinForm("登入後，就能登記你搭哪一班。") : `<button class="card fmini" data-pickopen>${li("user")}<span>登入後可以登記你搭哪一班</span><em>›</em></button>`;
+    return;
+  }
+  const mine = flightOf()[M.me], mf = T.flights.find(f => f.id === mine);
+  if (mf && !pickOpen) {
+    el.innerHTML = `<button class="card fmini" data-pickopen>${li("plane")}<span>${esc(M.me)} 搭 <b>${esc(mf.date)} ${esc(mf.legs.map(l => l.no || l.airline).join(" → "))}</b></span><em>更改 ›</em></button>`;
+    return;
+  }
+  el.innerHTML = `<div class="card fpick">
+    <div class="fq">${li("plane")} ${esc(M.me)}，你搭哪一班？${mf ? `<button class="fx2" data-pickclose aria-label="收起">${li("x")}</button>` : ""}</div>
     <div class="chips">${T.flights.filter(f => !f.ret).map(f => `<button class="chip ${mine === f.id ? "on" : ""}" data-pick="${f.id}">${esc(f.date)} ${esc(f.legs.map(l => l.no || l.airline).join("→"))}</button>`).join("")}</div>
-    <div class="hint">${mine ? "已登記，點別班可以更改。回程大家都一樣，不用選。" : "點一下就登記，名字會出現在那班的卡片上。"}</div></div>`;
+    <div class="hint">${mine ? "點別班可以更改。回程大家都一樣，不用選。" : "點一下就登記，回程大家都一樣，不用選。"}</div></div>`;
 }
 async function pickFlight(id) {
   const old = flightOf()[M.me];
-  M.cache.flights = { ...flightOf(), [M.me]: id }; renderFlights();
+  M.cache.flights = { ...flightOf(), [M.me]: id }; pickOpen = false; renderFlights();
   try {
     const r = await api.post({ action: "setFlight", name: M.me, flight: id, pin: Acct.pin });
     if (!r.ok) throw new Error(r.error === "unknown action" ? "要先更新 Apps Script 程式" : r.error || "登記失敗");
@@ -209,6 +228,8 @@ function initFlights() {
   $("#ftabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { fTab = +b.dataset.t; render(); } });
   $("#flights").addEventListener("click", e => {
     const p = e.target.closest("[data-pick]"); if (p) return pickFlight(p.dataset.pick);
+    if (e.target.closest("[data-pickopen]")) { pickOpen = true; renderPick(); return; }
+    if (e.target.closest("[data-pickclose]")) { pickOpen = false; renderPick(); return; }
     const j = e.target.closest("[data-join]"); if (j) return doJoin(j.closest(".card"));
     const c = e.target.closest(".fl"); if (c) openFlight(T.flights[+c.dataset.f]);
   });
@@ -247,15 +268,15 @@ function openFlight(f) {
   for (let lo = 118; lo <= 138; lo += 4) { const [x] = P(30, lo); grid += `<line x1="${x}" y1="0" x2="${x}" y2="${MH}"/>`; }
   for (let la = 22; la <= 38; la += 4) { const [, y] = P(la, 120); grid += `<line x1="0" y1="${y}" x2="${MW}" y2="${y}"/>`; }
   const svg = `<svg viewBox="0 0 ${MW} ${MH}" xmlns="http://www.w3.org/2000/svg">
-    <defs><filter id="mg" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-    <radialGradient id="rad" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#1a0f3a"/><stop offset="1" stop-color="#05040c"/></radialGradient></defs>
+    <defs><filter id="mg" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <radialGradient id="rad" cx="55%" cy="45%" r="70%"><stop offset="0" stop-color="#1c1b19"/><stop offset="1" stop-color="#101010"/></radialGradient></defs>
     <rect width="${MW}" height="${MH}" fill="url(#rad)"/>
-    <g stroke="#2a2150" stroke-width=".6">${grid}</g>
-    <g fill="rgba(5,217,232,.07)" stroke="#05d9e8" stroke-width="1" stroke-linejoin="round" opacity=".75">${LAND.map(p => `<polygon points="${poly(p)}"/>`).join("")}</g>
-    <g fill="none" stroke="#ff2a6d" stroke-width="2" stroke-dasharray="5 5" filter="url(#mg)">${L.map((l, k) => `<path id="leg${k}" d="${arcPath(AP[l.from], AP[l.to])}"/>`).join("")}</g>
-    <path id="trail" fill="none" stroke="#f9f871" stroke-width="2.5" filter="url(#mg)"/>
-    ${codes.map(c => { const [x, y] = P(AP[c].lat, AP[c].lon); return `<g filter="url(#mg)"><circle cx="${x}" cy="${y}" r="5" fill="#07060f" stroke="#f9f871" stroke-width="2"/><text x="${x}" y="${+y + 18}" fill="#e9e6ff" font-size="12" font-weight="700" text-anchor="middle" font-family="Noto Sans TC,sans-serif">${AP[c].name}</text><text x="${x}" y="${+y - 10}" fill="#f9f871" font-size="9" text-anchor="middle" font-family="JetBrains Mono,monospace">${c}</text></g>`; }).join("")}
-    <g id="plane" filter="url(#mg)"><path d="M10 0 L-6 -7 L-3 0 L-6 7 Z" fill="#fff" stroke="#05d9e8" stroke-width="1.2"/></g>
+    <g stroke="rgba(200,165,94,.07)" stroke-width=".6">${grid}</g>
+    <g fill="rgba(236,232,225,.045)" stroke="rgba(236,232,225,.32)" stroke-width=".8" stroke-linejoin="round">${LAND.map(p => `<polygon points="${poly(p)}"/>`).join("")}</g>
+    <g fill="none" stroke="rgba(200,165,94,.45)" stroke-width="1.2" stroke-dasharray="2 5" stroke-linecap="round">${L.map((l, k) => `<path id="leg${k}" d="${arcPath(AP[l.from], AP[l.to])}"/>`).join("")}</g>
+    <path id="trail" fill="none" stroke="#c8a55e" stroke-width="1.8" stroke-linecap="round" filter="url(#mg)"/>
+    ${codes.map(c => { const [x, y] = P(AP[c].lat, AP[c].lon); return `<g><circle cx="${x}" cy="${y}" r="7" fill="none" stroke="rgba(200,165,94,.35)"/><circle cx="${x}" cy="${y}" r="3" fill="#c8a55e"/><text x="${x}" y="${+y + 20}" fill="#ece8e1" font-size="13" text-anchor="middle" font-family="Shippori Mincho,serif">${AP[c].name}</text><text x="${x}" y="${+y - 12}" fill="#c8a55e" font-size="9" letter-spacing="2" text-anchor="middle" font-family="Noto Sans TC,sans-serif">${c}</text></g>`; }).join("")}
+    <g id="plane" filter="url(#mg)"><path d="M11 0 L-6 -8 L-2.5 0 L-6 8 Z" fill="#ece8e1" stroke="#c8a55e" stroke-width="1"/></g>
   </svg>`;
   const first = L[0], last = L[L.length - 1];
   let legsHtml = "";
@@ -270,6 +291,7 @@ function openFlight(f) {
   const tzs = [...new Set(codes.map(c => AP[c].tz))];
   $("#sheet").innerHTML = `
     <div class="hd"><div><h3>${esc(f.who)}</h3><p>${f.ret ? "1/21（四）" : esc(f.date)}・${L.map(l => esc(l.no || l.airline)).join(" → ")}</p></div><button class="xx" aria-label="關閉">${li("x")}</button></div>
+    ${paxBlock(f)}
     <div class="map">${svg}</div>
     <div class="fst" id="fst"></div><div class="fbar"><i id="fbar"></i></div>
     ${legsHtml}
