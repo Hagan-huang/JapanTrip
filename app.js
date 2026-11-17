@@ -505,6 +505,13 @@ function dayWx(d) {
   const p = x.daily.precipitation_probability_max[k];
   return `<div class="dwx">${wx(x.daily.weather_code[k])[0]} ${wx(x.daily.weather_code[k])[1]}・${Math.round(x.daily.temperature_2m_min[k])}–${Math.round(x.daily.temperature_2m_max[k])}°${p != null ? `・${li("umbrella")}${p}%` : ""}</div>`;
 }
+// 每天的場景：有水墨畫就用畫（加飄雪），沒有或載入失敗就用金色線稿
+function dayScene(d, c) {
+  const im = (T.DAY_IMAGES || {})[d.date], line = typeof ART !== "undefined" ? ART.day(d.icon) : "";
+  if (!im) return line ? `<div class="dscene" style="--c:${c}">${line}</div>` : "";
+  const flakes = Array.from({ length: 12 }, () => `<i style="left:${(Math.random() * 100).toFixed(1)}%;--d:${(6 + Math.random() * 6).toFixed(2)}s;--w:${(Math.random() * -10).toFixed(2)}s;--s:${(.4 + Math.random() * .6).toFixed(2)}"></i>`).join("");
+  return `<div class="dscene ink" data-d="${esc(d.date)}" style="--c:${c}"><img src="${esc(im.src)}" alt="" decoding="async" style="object-position:${esc(im.pos || "50% 50%")}" onerror="this.parentNode.classList.add('fail')">${line}<div class="wxfx snow" aria-hidden="true">${flakes}</div></div>`;
+}
 function renderDay(d, delay = 0, quiet = false) {
   const c = HUE[d.hue] || "var(--cyan)";
   const grp = group === "all" ? null : T.groups.find(g => g.id === group);
@@ -545,8 +552,10 @@ function renderDay(d, delay = 0, quiet = false) {
     return `<div class="it t-${it.type}${it.tbd ? " tbd" : ""}${st}${meet}" style="animation-delay:${delay + 120 + k * 40}ms"><span class="tm">${esc(it.t)}${badge}</span>${body}</div>`;
   }).join("");
   $("#dayView").classList.toggle("quiet", quiet);
+  // 每分鐘自動更新時，保留原本的畫（不要讓慢慢推近的動畫跳回開頭）
+  const keep = quiet ? $(`#dayView .dscene.ink[data-d="${d.date}"]`) : null;
   $("#dayView").innerHTML = `
-    ${typeof ART !== "undefined" ? `<div class="dscene" style="--c:${c}">${ART.day(d.icon)}</div>` : ""}
+    ${dayScene(d, c)}
     <div class="card glow dcard" style="--c:${c};animation-delay:${delay}ms;animation-fill-mode:backwards">
       <div class="art"><svg viewBox="0 0 40 40" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[d.icon] || ICONS.torii}</svg></div>
       <div><div class="k">DAY ${di + 1} · ${esc(d.date)} 週${esc(d.dow)}</div><h3>${esc(away ? "還在台灣" : alt.title || d.title)}</h3>
@@ -555,6 +564,7 @@ function renderDay(d, delay = 0, quiet = false) {
     </div>
     ${away ? `<div class="card away"><b>🇹🇼</b>${esc(grp.name)} ${esc(T.days[grp.arrive].date)} 才出發，這天還沒到日本<div class="mt"><button class="btn sm yel" data-jump="${grp.arrive}">看 ${esc(T.days[grp.arrive].date)} ▸</button></div></div>` : `<div class="tl">${items}</div>`}
     <div class="swipe-hint">← 左右滑動切換日期 →</div>`;
+  if (keep) { const n = $("#dayView .dscene"); if (n) n.replaceWith(keep); }
 }
 
 /* =========================================================
@@ -1534,7 +1544,13 @@ function coinDrop() {
   document.body.appendChild(c); setTimeout(() => c.remove(), 1300);
 }
 window.__coinDrop = () => coinDrop();
+// 進網站一會兒後，在背景先把 9 張水墨畫載好（存進離線快取，地鐵裡也看得到）
+function prefetchDays() {
+  const go = () => Object.values(T.DAY_IMAGES || {}).forEach(im => { const i = new Image(); i.decoding = "async"; i.src = im.src; });
+  setTimeout(() => ("requestIdleCallback" in window ? requestIdleCallback(go) : go()), 6000);
+}
 function initFx() {
+  prefetchDays();
   // 標題每個字包起來，逐字浮現
   $$(".bt h2").forEach(h => { h.innerHTML = [...h.textContent].map((ch, i) => `<span class="ch" style="--i:${i}">${esc(ch)}</span>`).join(""); });
   // 按下去的墨暈

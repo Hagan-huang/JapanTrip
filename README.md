@@ -37,7 +37,8 @@ iPhone：用 Safari 打開網址 → 下方「分享」⬆ →「加入主畫面
 
 ### 插畫與動畫（墨色風格）
 - `art.js`：頁首 5 張金色線稿（鳥居、鶴、五重塔、御守、招財貓）＋每日場景 9 張，打開時像毛筆一筆一筆畫出來。
-- 每天的場景照 `data.js` 每日的 `icon` 挑（plane、torii、torii2、boat、fox、deer、ninja、fall、plane2）；換 icon 就換場景。
+- 每天行程上方是 Gemini 畫的水墨畫（`images/days/`，設定在 `data.js` 的 `DAY_IMAGES`）：邊緣淡進黑底、墨暈浮現、慢慢推近、飄雪；進網站 6 秒後會在背景先載好 9 張，離線也看得到。
+- 某天沒有圖或載入失敗時，改顯示 `art.js` 的金色線稿（照每日的 `icon` 挑）。
 - 主頁頁首依日本時間換太陽／月亮，依今晚住的城市即時天氣下雪或下雨。
 - 清單全部打勾蓋「済」章、記一筆帳有小判掉下來、按鈕有墨暈。
 
@@ -94,4 +95,4 @@ iPhone：用 Safari 打開網址 → 下方「分享」⬆ →「加入主畫面
 - `app.js`：程式
 - `sw.js`、`manifest.webmanifest`：加到主畫面、離線快取
 - `apps-script/Code.gs`：Google 試算表後端
-- `images/`：封面、App 圖示、換日期斬擊用的刀
+- `images/`：封面、App 圖示、換日期斬擊用的刀；`images/days/`：每日水墨畫
