@@ -556,7 +556,7 @@ function renderDay(d, delay = 0, quiet = false) {
   const keep = quiet ? $(`#dayView .dscene.ink[data-d="${d.date}"]`) : null;
   $("#dayView").innerHTML = `
     ${dayScene(d, c)}
-    <div class="card glow dcard" style="--c:${c};animation-delay:${delay}ms;animation-fill-mode:backwards">
+    <div class="card glow dcard${(T.DAY_IMAGES || {})[d.date] || typeof ART !== "undefined" ? " cap" : ""}" style="--c:${c};animation-delay:${delay}ms;animation-fill-mode:backwards">
       <div class="art"><svg viewBox="0 0 40 40" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[d.icon] || ICONS.torii}</svg></div>
       <div><div class="k">DAY ${di + 1} · ${esc(d.date)} 週${esc(d.dow)}</div><h3>${esc(away ? "還在台灣" : alt.title || d.title)}</h3>
       <div class="s">${away ? `${esc(T.days[grp.arrive].date)} 才出發` : `住 ${esc(alt.stay || d.stay)}<span class="pp">${esc(alt.people || d.people)}</span>`}</div>${away ? "" : dayWx(d)}</div>

@@ -908,6 +908,12 @@ body.sumi .page.on .bt h2 .ch{animation:chin .7s cubic-bezier(.2,.7,.2,1) backwa
 @keyframes inkin{from{opacity:0;filter:blur(10px) brightness(.5);transform:scale(1.05)}to{opacity:1;filter:none;transform:scale(1)}}
 @keyframes kb2{from{transform:scale(1)}to{transform:scale(1.05) translateX(-1.2%)}}
 .quiet .dscene.ink img{animation:kb2 28s ease-in-out infinite alternate}
+/* 日卡接在畫下面當題字：拿掉方框和圖示，壓進畫底部的淡出處 */
+body.sumi .card.dcard.cap{background:none;border-radius:0;padding:0 6px;margin:-12px 0 18px;position:relative;z-index:2;align-items:flex-start}
+body.sumi .dcard.cap .art{display:none}
+body.sumi .dcard.cap h3{font-size:22px;line-height:1.35;text-shadow:0 1px 12px rgba(10,10,10,.9),0 0 2px rgba(10,10,10,.8)}
+body.sumi .dcard.cap .k{text-shadow:0 1px 8px rgba(10,10,10,.9)}
+body.sumi .dcard.cap .share{margin-top:2px;background:rgba(18,18,18,.55)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -1003,9 +1009,9 @@ body.sumi .page.on .bt h2 .ch{animation:chin .7s cubic-bezier(.2,.7,.2,1) backwa
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
-<script>window.APP_VER="v2026111704"</script>
-<script src="data.js?v=2026111704"></script>
-<script src="art.js?v=2026111704"></script>
-<script src="app.js?v=2026111704"></script>
+<script>window.APP_VER="v2026111705"</script>
+<script src="data.js?v=2026111705"></script>
+<script src="art.js?v=2026111705"></script>
+<script src="app.js?v=2026111705"></script>
 </body>
 </html>
