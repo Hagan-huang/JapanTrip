@@ -9,13 +9,13 @@
 //    mode：可選，限定交通方式（地鐵、JR、京阪…）
 //    parts：一段一段的錢。op 是誰收的錢，一日券靠它判斷涵不涵蓋：
 //      kmetro 京都地鐵｜kbus 京都市巴士｜keihan 京阪（京都段）｜keihanx 京阪（跨到大阪）
-//      eiden 叡電｜jr JR｜hankyu 阪急｜hanshin 阪神｜kintetsu 近鐵｜nankai 南海
+//      eiden 叡電｜kyobus 京都巴士（不是市巴士）｜jr JR｜hankyu 阪急｜hanshin 阪神｜kintetsu 近鐵｜nankai 南海
 //      ometro 大阪地鐵｜cable 纜車｜taxi 計程車（每人分攤）｜in 門票（可加 id，給周遊卡用）
 //    est: true ＝ 估的（畫面顯示「約」）；label：這段在幹嘛（點價格會看到）
 //    parts 寫 [] ＝ 確定免費，不會被算成「沒有價格」
 // =============================================
 window.PRICES = {
-  checked: "2026-11-17",
+  checked: "2026-11-23",
 
   rules: [
     // ---------- 機場 ----------
@@ -25,16 +25,24 @@ window.PRICES = {
 
     // ---------- 1/13 京都 ----------
     { has: ["烏丸線到四條"], parts: [{ op: "kmetro", yen: 220, label: "烏丸線 京都→四條" }] },
-    { has: ["南禪寺", "銀閣寺"], parts: [
-      { op: "kmetro", yen: 260, est: true, label: "地鐵 四條→蹴上" },
-      { op: "in", yen: 1000, label: "銀閣寺（2026/4/1 起）" },
-      { op: "kbus", yen: 230, label: "市巴士 銀閣寺→四條西洞院" }] },
+    { has: ["市巴士 203"], parts: [{ op: "kbus", yen: 230, label: "市巴士 203 四條西洞院→銀閣寺道" }] },
+    { has: ["南禪寺", "銀閣寺"], parts: [{ op: "in", yen: 1000, label: "銀閣寺（2026/4/1 起；南禪寺境內、水路閣免費）" }] },
+    { has: ["梅湯"], parts: [
+      { op: "kmetro", yen: 220, label: "地鐵東西線 蹴上→三條京阪" },
+      { op: "keihan", yen: 180, label: "京阪 三條→清水五條" },
+      { op: "in", yen: 550, label: "サウナの梅湯" }] },
     { has: ["錢湯"], parts: [{ op: "in", yen: 550, label: "京都錢湯" }] },
 
     // ---------- 1/14 鞍馬・貴船・金閣寺 ----------
     { has: ["出町柳", "鞍馬"], mode: "京阪", parts: [{ op: "keihan", yen: 240, label: "京阪 祇園四條→出町柳" }, { op: "eiden", yen: 470, label: "叡電 出町柳→鞍馬" }] },
     { has: ["鞍馬寺"], parts: [{ op: "in", yen: 500, label: "鞍馬寺 愛山費" }] },
     { has: ["貴船神社"], parts: [] },
+    { has: ["貴船口", "一乘寺"], parts: [
+      { op: "kyobus", yen: 200, label: "京都巴士 33 貴船→貴船口駅前" },
+      { op: "eiden", yen: 470, label: "叡電 貴船口→一乘寺" }] },
+    { has: ["修學院離宮"], parts: [] },
+    { has: ["修學院站", "出町柳"], parts: [{ op: "eiden", yen: 220, label: "叡電 修學院→出町柳" }] },
+    { has: ["京阪直達祇園四條"], parts: [{ op: "keihan", yen: 240, label: "京阪 出町柳→祇園四條" }] },
     { has: ["出町柳", "金閣寺"], mode: "計程車", parts: [
       { op: "eiden", yen: 470, est: true, label: "叡電 貴船口→出町柳" },
       { op: "taxi", yen: 700, est: true, label: "計程車 出町柳→金閣寺（一台約 ¥2,000，3 人分攤）" }] },
@@ -44,7 +52,17 @@ window.PRICES = {
       { op: "in", yen: 550, label: "船岡溫泉" },
       { op: "kbus", yen: 230, est: true, label: "市巴士 回四條西洞院" }] },
 
-    // ---------- 1/15 白鬚神社・比叡山 ----------
+    // ---------- 1/15 白鬚神社・二條城・金閣寺 ----------
+    { has: ["地鐵四條", "近江高島"], parts: [
+      { op: "kmetro", yen: 290, label: "地鐵 四條→烏丸御池→山科（烏丸線轉東西線，算一段）" },
+      { op: "jr", yen: 770, label: "JR 湖西線 山科→近江高島" }] },
+    { has: ["近江高島", "二條城前"], parts: [
+      { op: "taxi", yen: 300, est: true, label: "計程車 白鬚神社→近江高島站（一台約 ¥1,200，4 人分攤）" },
+      { op: "jr", yen: 770, label: "JR 湖西線 近江高島→山科" },
+      { op: "kmetro", yen: 290, label: "地鐵東西線 山科→二條城前" }] },
+    { has: ["二之丸御殿"], parts: [{ op: "in", yen: 1300, label: "二條城 入城＋二之丸御殿" }] },
+    { has: ["市巴士 12 號"], parts: [{ op: "kbus", yen: 230, label: "市巴士 12 二條城前→金閣寺道" }] },
+    // （下面是舊的比叡山路線，行程已經拿掉；之後排回來會自動套用）
     { has: ["京都", "近江高島"], mode: "JR", parts: [
       { op: "kmetro", yen: 220, est: true, label: "烏丸線 四條→京都" },
       { op: "jr", yen: 860, est: true, label: "JR 湖西線 京都→近江高島" }] },
@@ -115,7 +133,8 @@ window.PRICES = {
     { name: "京都地鐵・巴士 1日券", yen: 1100, covers: ["kmetro", "kbus"], buy: "地鐵站、市巴士上" },
     { name: "京都地鐵 1日券", yen: 800, covers: ["kmetro"], buy: "地鐵站售票機" },
     { name: "叡電 1日券", yen: 1200, covers: ["eiden"], buy: "出町柳站" },
-    { name: "鞍馬・貴船日歸票", yen: 2100, covers: ["kmetro", "kbus", "eiden"], buy: "地鐵站；京阪不能用" },
+    { name: "叡電・京阪 1日券", yen: 2100, covers: ["keihan", "keihanx", "eiden"], buy: "スルッとQRtto" },
+    { name: "地鐵＆叡電 鞍馬・貴船日歸票", yen: 2100, covers: ["kmetro", "eiden"], buy: "地鐵站、出町柳站；市巴士、京都巴士不能用，京阪只有三條〜出町柳" },
     { name: "JR 關西地區周遊券 1 日", yen: 2800, covers: ["jr"], buy: "限外國觀光客，線上或 JR 窗口" }
   ]
 };
