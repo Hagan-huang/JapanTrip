@@ -443,13 +443,7 @@ const ICONS = {
 };
 const MODE_C = { "地鐵": "var(--cyan)", "JR": "var(--green)", "京阪": "var(--purple)", "阪急": "var(--purple)", "阪神": "var(--purple)", "近鐵": "var(--purple)", "叡電": "var(--purple)", "南海": "var(--purple)", "纜車": "var(--yellow)", "公車": "var(--yellow)", "步行": "var(--dim)", "計程車": "var(--orange)", "飛機": "var(--pink)", "船": "var(--cyan)" };
 const HUE = { cyan: "var(--cyan)", pink: "var(--pink)", purple: "var(--purple)", yellow: "var(--yellow)" };
-const KATANA = `<img class="kat" src="images/katana.png" alt="">`;
-const FX = `<div class="fx" id="fx"><div class="flash"></div>${KATANA}
-  <svg class="cut" viewBox="0 0 100 100" preserveAspectRatio="none"><defs><linearGradient id="cg" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#05d9e8"/><stop offset="1" stop-color="#ff2a6d"/></linearGradient></defs>
-  <line x1="102" y1="12" x2="-2" y2="90" stroke="url(#cg)" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>
-  <div class="zan">ザシュッ！</div></div>`;
 let curDay = 0;
-new Image().src = "images/katana.png";
 const GIDS = T.groups.map(g => g.id);
 let group = store.get("group", "kyoto");
 if (group !== "all" && !GIDS.includes(group)) group = "kyoto";
@@ -500,25 +494,19 @@ function initDays() {
   selectDay(idx, false);
 }
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-let slashing = false;
+let switching = false;
 function selectDay(i, anim) {
-  if (anim && (i === curDay || slashing)) return;
+  if (anim && (i === curDay || switching)) return;
   curDay = i;
   $$(".dt").forEach((b, j) => b.classList.toggle("on", j === i));
   const rail = $("#rail"), target = 4 + i * 64 + 32 - rail.clientWidth / 2;
   rail.scrollTo({ left: Math.max(0, target), behavior: anim ? "smooth" : "auto" });
   const view = $("#dayView"), old = $(".dcard", view);
   if (!anim || reduce || !old) { renderDay(T.days[i], 0); return; }
-  // 斬擊：舊卡片被切成兩半飛開，新卡片出現
-  slashing = true;
-  const top = old.offsetTop, h = old.offsetHeight;
-  const halves = ["a", "b"].map(k => { const c = old.cloneNode(true); c.classList.add("half", k); c.style.top = top + "px"; c.style.left = "0"; c.style.right = "0"; return c; });
-  renderDay(T.days[i], 320); updateBanners();
-  view.append(...halves);
-  view.insertAdjacentHTML("beforeend", FX);
-  const fx = $("#fx"); fx.style.top = top + "px"; fx.style.height = h + "px";
-  requestAnimationFrame(() => fx.classList.add("go"));
-  setTimeout(() => { halves.forEach(x => x.remove()); fx.remove(); slashing = false; }, 1000);
+  // 換天：舊的行程淡出，新的再淡入（安靜一點，配合墨色風格）
+  switching = true;
+  view.classList.add("leave");
+  setTimeout(() => { view.classList.remove("leave"); renderDay(T.days[i], 0); updateBanners(); switching = false; }, 180);
 }
 // 導航：從目前位置搭大眾運輸過去
 const navUrl = q => "https://www.google.com/maps/dir/?api=1&travelmode=transit&destination=" + encodeURIComponent(q);
@@ -1588,7 +1576,7 @@ function initTools() {
   addEventListener("online", () => { upd(); sync(true); }); addEventListener("offline", upd); upd();
   // 旅行當天：每分鐘更新「進行中」和關門倒數（不重播進場動畫）
   setInterval(() => {
-    if (document.hidden || !$("#days").classList.contains("on") || slashing) return;
+    if (document.hidden || !$("#days").classList.contains("on") || switching) return;
     if (myGroupDays().idx === curDay) renderDay(T.days[curDay], 0, true);
   }, 60000);
   document.addEventListener("visibilitychange", () => { if (document.hidden) keepAwake(false); });

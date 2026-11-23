@@ -227,31 +227,12 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:30px 0 50px;fon
 .speed.on{animation:speed .5s ease-out}
 @keyframes speed{0%{opacity:0}20%{opacity:1}100%{opacity:0}}
 
-/* ---------- katana slash ---------- */
+/* ---------- 換天：淡出淡入 ---------- */
 #dayView{position:relative;overflow-x:clip}
 .page{overflow-x:hidden;overflow-x:clip}
 html,body{overflow-x:hidden;max-width:100%}
-.fx{position:absolute;left:0;right:0;top:0;height:150px;pointer-events:none;z-index:5;overflow:visible}
-.fx .kat{position:absolute;right:-10px;top:50%;width:360px;height:auto;margin-top:-23px;transform-origin:92% 50%;opacity:0;filter:drop-shadow(0 0 8px rgba(5,217,232,.8)) drop-shadow(0 0 16px rgba(255,42,109,.5))}
-.fx.go .kat{animation:swing .52s cubic-bezier(.7,0,.2,1) forwards}
-@keyframes swing{0%{opacity:0;transform:rotate(62deg) translateX(30px)}12%{opacity:1}55%{opacity:1;transform:rotate(-38deg)}100%{opacity:0;transform:rotate(-52deg) translateX(-20px)}}
-.fx svg.cut{position:absolute;inset:-10px 0;width:100%;height:calc(100% + 20px);overflow:visible}
-.fx .cut line{stroke-dasharray:520;stroke-dashoffset:520;opacity:0}
-.fx.go .cut line{animation:cut .55s ease-out .2s forwards}
-@keyframes cut{0%{stroke-dashoffset:520;opacity:1;stroke-width:5}35%{stroke-dashoffset:0;opacity:1;stroke-width:5}100%{stroke-dashoffset:0;opacity:0;stroke-width:.5}}
-.fx .flash{position:absolute;inset:-40px -16px;background:radial-gradient(ellipse at 50% 50%,rgba(255,255,255,.75),rgba(255,42,109,.25) 40%,transparent 70%);opacity:0}
-.fx.go .flash{animation:flash .4s ease-out .27s}
-@keyframes flash{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
-.fx .zan{position:absolute;right:10px;top:4px;font-weight:900;font-size:38px;white-space:nowrap;color:#fff;font-style:italic;-webkit-text-stroke:2px var(--pink);text-shadow:4px 4px 0 var(--pink),0 0 20px var(--pink);opacity:0}
-.fx.go .zan{animation:zanx .7s cubic-bezier(.2,1.6,.4,1) .28s}
-@keyframes zanx{0%{opacity:0;transform:scale(2.2) rotate(-12deg)}25%{opacity:1;transform:scale(1) rotate(-8deg)}75%{opacity:1}100%{opacity:0;transform:scale(1) rotate(-8deg) translateY(-8px)}}
-.half{position:absolute;margin:0!important;animation:none!important;z-index:4;pointer-events:none}
-.half.a{clip-path:polygon(0 0,100% 0,100% 18%,0 86%);animation:ha .55s cubic-bezier(.5,0,.6,1) .3s forwards!important}
-.half.b{clip-path:polygon(0 86%,100% 18%,100% 100%,0 100%);animation:hb .55s cubic-bezier(.5,0,.6,1) .3s forwards!important}
-@keyframes ha{to{transform:translate(-26px,-22px) rotate(-3deg);opacity:0}}
-@keyframes hb{to{transform:translate(26px,26px) rotate(3deg);opacity:0}}
-.shake{animation:shake .3s ease .3s}
-@keyframes shake{0%,100%{transform:none}25%{transform:translate(3px,-2px)}50%{transform:translate(-3px,2px)}75%{transform:translate(2px,1px)}}
+#dayView.leave>*{animation:dayout .18s ease forwards!important}
+@keyframes dayout{to{opacity:0;transform:translateY(-6px)}}
 .dt .d{font-style:italic}
 
 /* ---------- flight tabs & modal ---------- */
@@ -549,7 +530,6 @@ body.showa .tabbar button.on i{filter:none}
 /* 保留的日式元素微調 */
 body.showa .noren{--nc:var(--indigo)}
 body.showa .noren .mon{font-family:var(--disp)}
-body.showa .fx .zan{font-family:var(--disp);font-style:normal;-webkit-text-stroke:0;color:var(--cream)}
 
 /* =========================================================
    墨色精品（body.showa.sumi，預設）
@@ -678,7 +658,6 @@ body.sumi .sheet{background:#161616;border-top:0;border-radius:22px 22px 0 0;box
 body.sumi .sheet.white{background:#fff}
 body.sumi .sheet .xx{border:0;background:#242424;border-radius:50%;display:grid;place-items:center}
 body.sumi .sheet .hd h3{font-family:var(--disp);font-weight:500;font-style:normal}
-body.sumi .fx .zan{font-weight:500}
 /* 風格切換 */
 /* =========================================================
    v2026-11-13：旅行當天模式、工具箱、動畫
@@ -786,10 +765,6 @@ body.sumi .cover .txt{z-index:2}
 body.sumi .enter{animation:goldbreath 3.2s ease-in-out infinite}
 @keyframes goldbreath{0%,100%{box-shadow:0 0 0 0 rgba(200,165,94,0)}50%{box-shadow:0 0 22px 0 rgba(200,165,94,.28)}}
 body.sumi .bscan{display:none}
-/* 換日期的斬擊：墨色風改成金色細線 */
-body.sumi .fx .cut line{stroke:var(--gold)}
-body.sumi .fx .kat{filter:grayscale(1) sepia(.55) brightness(1.15) contrast(1.05)}
-body.sumi .fx .flash{background:radial-gradient(ellipse at 50% 50%,rgba(236,232,225,.45),rgba(200,165,94,.16) 40%,transparent 70%)}
 /* =========================================================
    插畫與動畫（art.js）
    ========================================================= */
@@ -1085,10 +1060,10 @@ body.sumi .noren .prog{color:var(--dim);font-family:var(--body);font-size:12px;l
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
-<script>window.APP_VER="v2026112301"</script>
-<script src="data.js?v=2026112301"></script>
-<script src="art.js?v=2026112301"></script>
-<script src="prices.js?v=2026112301"></script>
-<script src="app.js?v=2026112301"></script>
+<script>window.APP_VER="v2026112302"</script>
+<script src="data.js?v=2026112302"></script>
+<script src="art.js?v=2026112302"></script>
+<script src="prices.js?v=2026112302"></script>
+<script src="app.js?v=2026112302"></script>
 </body>
 </html>

@@ -103,4 +103,4 @@ iPhone：用 Safari 打開網址 → 下方「分享」⬆ →「加入主畫面
 - `app.js`：程式
 - `sw.js`、`manifest.webmanifest`：加到主畫面、離線快取
 - `apps-script/Code.gs`：Google 試算表後端
-- `images/`：封面、App 圖示、換日期斬擊用的刀；`images/days/`：每日水墨畫
+- `images/`：封面、App 圖示；`images/days/`：每日水墨畫
