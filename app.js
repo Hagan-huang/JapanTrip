@@ -1114,7 +1114,7 @@ async function doJoin(root) {
     if (!r.ok) { if (r.error === "密碼錯誤") { M.key = ""; store.set("key", ""); toast("團體密碼錯誤"); return; } return toast(r.error || "登入失敗"); }
     // 換了帳號：先清掉這支手機上別人的個人資料
     if (M.me && M.me !== name && Acct.pin) Acct.clearLocal();
-    M.me = name; store.set("me", name); Acct.pin = pin; store.set("pin", pin); M.form.splitTouched = false;
+    M.me = name; store.set("me", name); Acct.pin = pin; store.set("pin", pin); M.form.splitTouched = false; store.set("guest", false);
     if (remote && !("data" in r)) toast("登入了，但 Apps Script 還是舊版，個人資料還不會同步，請照步驟更新");
     else if (r.data) { Acct.apply(Acct.merge(r.data, true)); Acct.push(); toast(`歡迎回來，${name}`); }
     else { Acct.push(); toast(r.exists ? `登入成功，${name}` : `帳號建立好了，${name}`); }
@@ -1387,6 +1387,13 @@ function homeProgress() {
       ${M.budget ? `<div class="bar" style="margin-top:6px"><i style="width:${Math.min(100, tot * M.rate / M.budget * 100)}%"></i></div><div class="hint">預算剩 ${fmtT(Math.max(0, M.budget - tot * M.rate))}</div>` : `<div class="hint"><a href="#" data-go="money">設定預算 ▸</a></div>`}</div>
   </div>`;
 }
+// 訪客模式：主頁最上面提醒一下，隨時可以登入
+function homeGuest() {
+  if (Acct.logged()) return "";
+  return `<div class="card hc guest"><h4>${li("user")} 訪客模式</h4>
+    <div class="hint">現在可以看行程、航班時間、準備清單和工具，個人帳和清單只存在這支手機。登記航班、看同行名單、記帳分帳要登入。</div>
+    <button class="btn sm yel mt" data-login>登入／建立帳號</button></div>`;
+}
 function renderHome(animate) {
   const v = $("#homeView"); if (!v) return;
   const now = jstNow(), tw = new Date(Date.now() + 8 * 36e5);
@@ -1396,6 +1403,7 @@ function renderHome(animate) {
   v.innerHTML = `<div class="hgrid${animate === true ? "" : " still"}">
     <div class="card glow hc"><div class="hdate"><div><div class="dd">${tw.getUTCMonth() + 1}/${tw.getUTCDate()}</div><div class="dw">週${W[tw.getUTCDay()]}・${String(tw.getUTCHours()).padStart(2, "0")}:${String(tw.getUTCMinutes()).padStart(2, "0")} 台灣</div></div>
       <div class="ds">${idx >= 0 ? `旅行第<b>DAY ${idx + 1}</b>` : days > 0 ? `出發倒數<b>${days} 天</b>` : `旅程<b>完成</b>`}<span>日本 ${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}</span></div></div></div>
+    ${homeGuest()}
     ${homeToday()}
     ${homeTools()}
     ${homeWeather()}
@@ -1415,6 +1423,7 @@ function initHome() {
   const v = $("#homeView");
   v.addEventListener("click", e => {
     const g = e.target.closest("[data-go]"); if (g) { e.preventDefault(); $(`#tabbar [data-tab="${g.dataset.go}"]`).click(); return; }
+    if (e.target.closest("[data-login]")) { M.tab = "group"; renderMoney(); $(`#tabbar [data-tab="money"]`).click(); setTimeout(() => { const n = $("#mView .jName"); n && n.focus(); }, 400); return; }
     if (e.target.id === "useRate") { const fx = store.get("fx", null); if (fx) { M.rate = +fx.twd.toFixed(4); store.set("rate", M.rate); toast("記帳匯率已更新"); renderHome(); } }
   });
   v.addEventListener("input", e => {
@@ -1717,15 +1726,20 @@ function initTabs() {
     history.replaceState(null, "", location.pathname + location.search);
     if (app.classList.contains("on")) { show("days", false); selectDay(i, false); updateBanners(); } else jump = i;
   });
-  // 一定要登入：沒登入過的人，按 ENTER 後出現登入畫面
+  // 沒登入過的人，按 ENTER 後出現登入畫面；也可以用訪客模式直接進去看
   const gate = $("#gate");
   const enter = () => {
-    if (Acct.logged()) return goIn();
-    gate.innerHTML = `<div style="width:100%;max-width:460px"><div class="gh">ACCESS // LOGIN</div>${joinForm("登入後才能進入。")}</div>`;
+    if (Acct.logged() || store.get("guest", false)) return goIn();
+    gate.innerHTML = `<div style="width:100%;max-width:460px"><div class="gh">ACCESS // LOGIN</div>${joinForm("同行的人請登入。")}
+      <button class="btn full dim guestbtn" data-guest>先用訪客模式看看</button>
+      <div class="hint guesthint">訪客能看行程、航班、清單和工具；同行名單和分帳要登入</div></div>`;
     gate.classList.add("on");
     setTimeout(() => { const n = $(".jName", gate); n && !n.value && n.focus(); }, 350);
   };
-  gate.addEventListener("click", e => { const b = e.target.closest("[data-join]"); if (b) doJoin(b.closest(".card")); });
+  gate.addEventListener("click", e => {
+    if (e.target.closest("[data-guest]")) { store.set("guest", true); gate.classList.remove("on"); goIn(); return; }
+    const b = e.target.closest("[data-join]"); if (b) doJoin(b.closest(".card"));
+  });
   gate.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("input")) { const c = e.target.closest(".card"); c && doJoin(c); } });
   window.__afterLogin = () => { if (gate.classList.contains("on")) { gate.classList.remove("on"); goIn(); } };
   $("#enter").addEventListener("click", enter);
